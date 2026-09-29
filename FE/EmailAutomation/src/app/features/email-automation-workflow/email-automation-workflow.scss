@@ -1,0 +1,2010 @@
+/* ======================================================
+   EMAIL AUTOMATION WORKFLOW - ULTRA-MODERN PREMIUM GLASS LAYOUT
+   ====================================================== */
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 35%, #1e1b4b 70%, #090d16 100%);
+}
+
+.email-workflow-app-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 12% 15%, rgba(99, 102, 241, 0.22) 0%, transparent 45%),
+              radial-gradient(circle at 88% 85%, rgba(168, 85, 247, 0.18) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+
+  /* ======================================================
+     MAIN BODY & DASHBOARD CONTAINER
+     ====================================================== */
+  .dashboard-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    padding: 12px 16px;
+    gap: 12px;
+    box-sizing: border-box;
+    min-width: 0;
+
+    /* TOP HEADER TOOLBAR */
+    .top-app-header {
+      position: relative;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px);
+      padding: 10px 18px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      flex-shrink: 0;
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        .brand-badge {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: transparent;
+          padding: 0;
+          border: none;
+          box-shadow: none;
+
+          .brand-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+          }
+
+          .brand-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+            white-space: nowrap;
+
+            .accent-text {
+              background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              font-weight: 800;
+            }
+          }
+        }
+
+        .title-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .page-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+          }
+
+          .subtitle-divider {
+            color: #cbd5e1;
+            font-size: 0.8rem;
+          }
+
+          .subtitle {
+            font-size: 0.76rem;
+            color: #64748b;
+            font-weight: 500;
+            white-space: nowrap;
+          }
+        }
+      }
+
+      .header-right {
+        position: relative;
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .header-status-badge {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          background: #ffffff;
+          border: 1px solid #c7d2fe;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.72rem;
+          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+          white-space: nowrap;
+
+          .status-indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+            animation: pulseDot 2s infinite;
+          }
+
+          .status-title {
+            color: #64748b;
+            font-weight: 600;
+          }
+
+          .status-value-pill {
+            color: #4338ca;
+            font-weight: 800;
+            background: #e0e7ff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.68rem;
+            border: 1px solid #c7d2fe;
+          }
+        }
+
+        .header-nav-switch-btn {
+          position: relative;
+          z-index: 1;
+          overflow: hidden;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 5px 14px;
+          font-size: 0.76rem;
+          font-weight: 750;
+          color: #3730a3;
+          background: #ffffff;
+          border: 1.5px solid #c7d2fe;
+          border-radius: 20px;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: navBtnBorderShadowBlink 2.6s ease-in-out infinite;
+
+          /* Smooth gradient hover layer that blinks smoothly */
+          &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+            opacity: 0;
+            border-radius: inherit;
+            z-index: -1;
+            transition: opacity 0.25s ease;
+            animation: navBtnBgBlink 2.6s ease-in-out infinite;
+          }
+
+          .switch-btn-icon {
+            display: inline-flex;
+            align-items: center;
+            color: #6366f1;
+            transition: color 0.25s ease;
+            animation: navBtnIconBlink 2.6s ease-in-out infinite;
+          }
+
+          .switch-btn-text {
+            letter-spacing: -0.1px;
+            animation: navBtnTextBlink 2.6s ease-in-out infinite;
+          }
+
+          &:hover {
+            transform: translateY(-1.5px) scale(1.02);
+            border-color: #6366f1;
+            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.45);
+            animation-play-state: paused;
+
+            &::before {
+              opacity: 1;
+              animation-play-state: paused;
+            }
+
+            .switch-btn-icon {
+              color: #ffffff;
+              animation-play-state: paused;
+            }
+
+            .switch-btn-text {
+              color: #ffffff;
+              animation-play-state: paused;
+            }
+          }
+        }
+      }
+
+      @keyframes pulseDot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+      }
+
+      @keyframes navBtnBgBlink {
+        0%, 100% {
+          opacity: 0;
+        }
+        45%, 55% {
+          opacity: 1;
+        }
+      }
+
+      @keyframes navBtnBorderShadowBlink {
+        0%, 100% {
+          border-color: #c7d2fe;
+          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
+        }
+        45%, 55% {
+          border-color: #6366f1;
+          box-shadow: 0 4px 18px rgba(99, 102, 241, 0.45);
+        }
+      }
+
+      @keyframes navBtnTextBlink {
+        0%, 100% {
+          color: #3730a3;
+        }
+        45%, 55% {
+          color: #ffffff;
+        }
+      }
+
+      @keyframes navBtnIconBlink {
+        0%, 100% {
+          color: #6366f1;
+        }
+        45%, 55% {
+          color: #ffffff;
+        }
+      }
+    }
+
+    /* Toast notice */
+    .action-toast {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+      animation: fadeIn 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ======================================================
+       2-PART SPLIT GRID LAYOUT (FULL SCREEN SPAN)
+
+       Part 1 is the workspace — the receipts list and the
+       pipeline together — and part 2 is Thread Details.
+       ====================================================== */
+    .three-part-layout {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: grid;
+      /* The workspace sizes itself from its own two columns; Thread Details
+         takes whatever is left. */
+      grid-template-columns: auto minmax(320px, 1fr);
+      gap: 12px;
+      overflow: hidden;
+      min-height: 0;
+      min-width: 0;
+
+      /* The two cards of part 1.
+
+         Receipts grew three columns (Pending Step, State, Action Status) and
+         was scrolling sideways to show them, so 50px moved to it from the
+         pipeline. The pair still totals the 710px it always did — Thread
+         Details is the 1fr column beside them and must not move, so anything
+         one of these two gains the other has to give.
+
+         The pipeline can spare it because its own padding, rail gutter and
+         pill tracking were tightened by about the same amount (see
+         workflow-visualizer.scss): its widest card is "STEP 04" beside a USER
+         VERIFICATION REQUIRED pill, and that pill still sits on the badge's
+         line here. Narrow this column further without buying the room back
+         inside it and the pill wraps, which makes every card in the stack a
+         row taller. */
+      .part-1-workspace {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(310px, 370px) minmax(300px, 340px);
+        gap: 12px;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+
+        /*
+          The Attachments popup, covering this part and nothing else — Thread
+          Details stays readable beside it, which is the point of opening here.
+
+          Out of flow, so it does not become a third column, and transparent to
+          the mouse while it is closed: the host still spans both cards, and
+          they have to stay clickable.
+
+          app-alert-popup shares this exact treatment: its own component styles
+          position the dialog *inside* it, but the host tag itself is still a
+          plain element here in .part-1-workspace's grid — without this rule it
+          sits as an untouched grid item, no different from a hidden <div>,
+          and grid gives it its own implicit row below the two real columns.
+          That row still takes up space even with nothing visible in it, which
+          is the blank strip this rule exists to prevent.
+        */
+        app-thread-attachments,
+        app-alert-popup {
+          position: absolute;
+          inset: 0;
+          z-index: 60;
+          pointer-events: none;
+
+          /*
+            Both hosts are positioned, so each seals its contents into a
+            stacking context of its own: the z-index the popups carry inside
+            themselves cannot decide which of the two is in front. Only this
+            can, and while they tie the DOM order settles it — which always
+            meant Alert Response, the later element, whatever was opened last.
+
+            They cover exactly the same area, so the one behind was invisible.
+            Opening Attachments over an open Alert Response looked like nothing
+            happening at all.
+          */
+          &.popup-on-top {
+            z-index: 61;
+          }
+        }
+      }
+
+      .part-panel {
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        max-height: 100%;
+
+        .panel-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          border-bottom: 1px solid #f1f5f9;
+          background: rgba(248, 250, 252, 0.85);
+          flex-shrink: 0;
+          border-radius: 16px 16px 0 0;
+
+          .title-with-badge,
+          .title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            h2,
+            h3 {
+              margin: 0;
+              font-size: 0.9rem;
+              font-weight: 800;
+              color: #1e293b;
+              line-height: 1;
+            }
+
+            .count-badge,
+            .count-pill {
+              background: #e0e7ff;
+              color: #4338ca;
+              padding: 2px 7px;
+              border-radius: 10px;
+              font-size: 0.68rem;
+              font-weight: 700;
+            }
+
+            .thread-id-badge {
+              background: #eef2ff;
+              color: #4338ca;
+              padding: 2px 8px;
+              border-radius: 6px;
+              font-size: 0.68rem;
+              font-weight: 700;
+              font-family: monospace;
+              border: 1px solid #c7d2fe;
+            }
+
+            .live-pill {
+              background: #dcfce7;
+              color: #15803d;
+              padding: 2px 7px;
+              border-radius: 10px;
+              font-size: 0.68rem;
+              font-weight: 700;
+            }
+          }
+        }
+      }
+
+      /* ----------------------------------------------------
+         PART 1: LEFT SIDE - EMAIL RECEIPTS LIST
+         ---------------------------------------------------- */
+      .part-1-receipts {
+        position: relative;
+
+        .panel-header {
+          position: relative;
+          z-index: 100;
+          border-radius: 16px 16px 0 0;
+        }
+
+        /* Threads on screen right now, not on the day: the receipts list pushes
+           this up whenever its search or pills change what it renders. */
+        .receipts-count-pill {
+          flex-shrink: 0;
+          padding: 3px 10px;
+          border-radius: 999px;
+          background: #eef2ff;
+          border: 1px solid #c7d2fe;
+          color: #4338ca;
+          font-size: 0.68rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .panel-content {
+          flex: 1 1 0px;
+          height: 0;
+          min-height: 0;
+          max-height: 100%;
+          overflow: hidden;
+          padding: 10px;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          border-radius: 0 0 16px 16px;
+          padding-top: 0px !important;
+
+          app-email-receipts-table {
+            flex: 1 1 0px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            height: 100%;
+            overflow: hidden;
+          }
+        }
+      }
+
+      /* ----------------------------------------------------
+         PART 2: MIDDLE - PARTICULAR THREAD DETAILS
+         ---------------------------------------------------- */
+      .part-2-thread-details {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+        border-radius: 16px;
+
+        .panel-header {
+          padding: 10px 16px;
+        }
+
+        .thread-id-badge {
+          background: #eef2ff;
+          color: #4338ca;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 0.68rem;
+          font-weight: 700;
+          font-family: monospace;
+          border: 1px solid #c7d2fe;
+        }
+
+        /* Ticket id, status and category, in that order — the header carries no
+           heading any more, so these three chips are what names the thread.
+           One shape and one rhythm for all three; only the colour separates
+           them, and the icons say which is which at a glance. */
+        .thread-identity {
+          flex-wrap: wrap;
+          gap: 6px;
+          min-width: 0;
+
+          .ticket-id-badge,
+          .ticket-status-badge,
+          .category-badge,
+          .sla-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 24px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            max-width: 100%;
+
+            /* "Ticket ID", "Status", "Category" — each chip says what it is
+               before it says the value. Held lighter than the value so the
+               label reads as a caption, not as part of the data. */
+            .badge-label {
+              flex-shrink: 0;
+              font-size: 0.6rem;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              opacity: 0.72;
+              padding-right: 6px;
+              border-right: 1px solid currentColor;
+              border-right-color: rgba(0, 0, 0, 0.12);
+            }
+
+            .badge-value {
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+
+          /* The identifier: mono, indigo, and first — it is the one value a
+             reviewer copies out of this header. */
+          .ticket-id-badge {
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+
+            .badge-value {
+              font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+              letter-spacing: 0.2px;
+            }
+          }
+
+          /* Ticket_Status from PRIDE_TICKET_ACJNOWLEDGEMENT. Green while open,
+             slate once closed; the dot carries the state on its own so the
+             chip still reads at a glance. */
+          .ticket-status-badge {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            font-size: 0.64rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+
+            /* Sits between the label and the value, tight to the value it
+               qualifies rather than centred in the chip. */
+            .status-dot {
+              margin-right: -1px;
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: currentColor;
+              box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+              flex-shrink: 0;
+            }
+
+            &.closed {
+              background: #f1f5f9;
+              color: #475569;
+              border-color: #cbd5e1;
+
+              .status-dot {
+                box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);
+              }
+            }
+          }
+
+          /* Classification, not an identifier — amber and sentence-cased, so it
+             never gets mistaken for the ticket id beside it. Kept for the
+             Ticket card, which shows the category on its own title row now. */
+          .category-badge {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+          }
+
+          /* The SLA clock, in the header rather than only in the Ticket card, so
+             the time left stays on screen however far the panel is scrolled.
+             Tabular figures stop it jittering as the digits change. */
+          .sla-badge {
+            /* Violet: green is the OPEN status beside it, amber is the category
+               chip on the Ticket card, and red is reserved for this chip's own
+               expired state. */
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+
+            .badge-value {
+              font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+              font-variant-numeric: tabular-nums;
+              font-weight: 800;
+            }
+
+            .sla-dot {
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: #8b5cf6;
+              flex-shrink: 0;
+            }
+
+            &.expired {
+              background: #fef2f2;
+              color: #b91c1c;
+              border-color: #fecaca;
+
+              .sla-dot {
+                background: #ef4444;
+                /* Pulses while the overdue time climbs: this is the one state
+                   that wants the reviewer's eye. */
+                animation: slaPulse 1s ease-in-out infinite;
+              }
+            }
+
+            /* Closed inside its window. Settled, so it reads quietly — green
+               and still, not another thing asking to be looked at. */
+            &.met {
+              background: #ecfdf5;
+              color: #047857;
+              border-color: #a7f3d0;
+
+              .sla-dot {
+                background: #10b981;
+                animation: none;
+              }
+            }
+          }
+        }
+
+        /* Open Email + Attachments sit together on the right of the header */
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        .open-email-header-btn,
+        .attachments-header-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #eef2ff;
+          border: 1px solid #c7d2fe;
+          color: #4f46e5;
+          padding: 4px 12px;
+          border-radius: 8px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 1px 2px rgba(79, 70, 229, 0.08);
+
+          &:hover {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+            box-shadow: 0 3px 10px rgba(79, 70, 229, 0.3);
+            transform: translateY(-1px);
+          }
+        }
+
+        /* A <button>, unlike the <a> beside it, needs these reset explicitly */
+        .attachments-header-btn {
+          cursor: pointer;
+          font-family: inherit;
+          line-height: 1.4;
+        }
+
+        /* Subject card. Scoped to the panel, not .thread-body-content, because
+           it renders inside .panel-header. The card surface and the title row
+           come from .ai-insights-card — only the subject line itself is set
+           here, so this card matches the ones below it exactly. */
+        .subject-banner {
+          .thread-subject {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.35;
+            letter-spacing: -0.1px;
+            word-break: break-word;
+          }
+        }
+
+
+        @keyframes accordionSlideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* The green check arriving on a step that has just finished */
+        @keyframes stepCheckPop {
+          from {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /*
+          The slow fade in / fade out on the card of the step in focus.
+
+          Never fades to nothing: the ring holds at a visible indigo through the
+          whole cycle and only widens and deepens on the beat. At its old low
+          point the card was indistinguishable from the ones around it, so the
+          highlight only existed for half of every two seconds.
+        */
+        @keyframes stepFocusPulse {
+          0%,
+          100% {
+            box-shadow:
+              0 0 0 2px rgba(99, 102, 241, 0.45),
+              0 4px 14px -8px rgba(79, 70, 229, 0.5);
+          }
+          50% {
+            box-shadow:
+              0 0 0 6px rgba(99, 102, 241, 0.28),
+              0 12px 28px -12px rgba(79, 70, 229, 0.75);
+          }
+        }
+
+        /* Nobody should be made to watch a card breathe if they have asked the
+           system not to animate; the border still marks the active step. */
+        @media (prefers-reduced-motion: reduce) {
+          .ai-insights-card.is-active-step {
+            animation: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.45);
+          }
+
+          .ai-insights-card .step-done-check {
+            animation: none;
+          }
+        }
+        /* AI Intelligence & Insights Card */
+        .ai-insights-card {
+          background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+          border: 1px solid #c7d2fe;
+          border-radius: 12px;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+
+          .card-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #312e81;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+
+            /* Assignee count sits beside the title now that Assigned To is
+               its own card, so it stays readable while the card is shut */
+            .assignee-count-badge {
+              background: #e0e7ff;
+              color: #4338ca;
+              font-size: 0.64rem;
+              font-weight: 700;
+              padding: 1px 7px;
+              border-radius: 10px;
+              border: 1px solid #c7d2fe;
+            }
+
+            /* Title of a card that carries a collapsed preview. Held on one
+               line and given a fixed 110px column, so the chips start at the
+               same x on every card instead of stepping in and out with the
+               length of the title. min-width, not width: a title longer than
+               the column pushes past it rather than being clipped. */
+            .card-title-text {
+              flex-shrink: 0;
+              white-space: nowrap;
+              /* Wide enough for the longest title in the stack — "Bank
+                 Reconciliation", which belongs to the payment component below.
+                 Kept in step with .card-title-text in email-payment-details.scss;
+                 the two only line up if they hold the same number. */
+              min-width: 138px;
+            }
+
+            /* The card's own fields, shown beside the title while it is shut and
+               replaced by the boxes once it opens. Labelled chips, one colour
+               per field. Whichever value is longest gives way first, so the
+               done-check and chevron keep their place. */
+            .header-preview {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              min-width: 0;
+              flex: 1 1 auto;
+              /* Sets the chips off from the title rather than butting them up
+                 against it on the row's 6px gap. */
+              margin-left: 6px;
+              overflow: hidden;
+
+              .hp-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                min-width: 0;
+                /* Height comes from the line box now, not a fixed 24px, so the
+                   line-height below is what actually sets it. */
+                min-height: 24px;
+                padding: 0 11px;
+                border-radius: 999px;
+                background: #ffffff;
+                border: 1px solid #e0e7ff;
+                line-height: 2;
+              }
+
+              .hp-value {
+                font-size: 0.72rem;
+                font-weight: 700;
+                color: #334155;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                min-width: 0;
+              }
+
+              /* Reads as a caption against its value without going faint — the
+                 divider, not the contrast, is what separates the two. */
+              .hp-label {
+                flex-shrink: 0;
+                font-size: 0.6rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding-right: 7px;
+                border-right: 1px solid rgba(15, 23, 42, 0.12);
+              }
+
+              /* One colour per field, so the eye picks out the unit without
+                 reading the labels once it knows the order. */
+              .hp-project {
+                background: #eef2ff;
+                border-color: #c7d2fe;
+
+                .hp-label { color: #6366f1; }
+                .hp-value { color: #3730a3; }
+              }
+
+              .hp-subproject {
+                background: #f5f3ff;
+                border-color: #ddd6fe;
+
+                .hp-label { color: #8b5cf6; }
+                .hp-value { color: #5b21b6; }
+              }
+
+              /* Amber, not green: green is the done-check and the advance
+                 button, and a unit number is neither of those. */
+              .hp-unit {
+                background: #fffbeb;
+                border-color: #fde68a;
+
+                .hp-label { color: #d97706; }
+                .hp-value { color: #b45309; }
+              }
+
+              /* Customer Details. Who wrote in, then the address it came from —
+                 the same two-tone pairing the unit fields use. */
+              .hp-name {
+                background: #eef2ff;
+                border-color: #c7d2fe;
+
+                .hp-label { color: #6366f1; }
+                .hp-value { color: #3730a3; }
+              }
+
+              .hp-email {
+                background: #f8fafc;
+                border-color: #cbd5e1;
+
+                .hp-label { color: #64748b; }
+                .hp-value { color: #1e293b; }
+              }
+
+              /* Subject and Message Body: one free-text field, so the chip takes
+                 whatever room the row leaves and ellipsises inside it rather
+                 than sizing to the text. Tinted like the labelled chips below,
+                 a colour each, so the two are told apart while shut. */
+              .hp-text {
+                min-width: 0;
+
+                .hp-value {
+                  font-weight: 600;
+                }
+              }
+
+              .hp-subject {
+                background: #eef2ff;
+                border-color: #c7d2fe;
+
+                .hp-value { color: #3730a3; }
+              }
+
+              .hp-body {
+                background: #f5f3ff;
+                border-color: #ddd6fe;
+
+                .hp-value { color: #5b21b6; }
+              }
+
+              /* Ticket card: how the thread was classified. Amber matches the
+                 category chip the panel header used to carry. */
+              .hp-category {
+                background: #fffbeb;
+                border-color: #fde68a;
+
+                .hp-label { color: #d97706; }
+                .hp-value { color: #b45309; }
+              }
+
+              .hp-intent {
+                background: #eef2ff;
+                border-color: #c7d2fe;
+
+                .hp-label { color: #6366f1; }
+                .hp-value { color: #3730a3; }
+              }
+            }
+
+            /* The pipeline step behind this card finished. A filled green square
+               rather than a bare tick: at this size a stroke on its own reads as
+               decoration, while the block of colour is legible at a glance down
+               the stack. Sits immediately before the chevron — see the
+               margin-left reset under .clickable-header. */
+            .step-done-check {
+              margin-left: auto;
+              width: 22px;
+              height: 22px;
+              border-radius: 7px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              flex-shrink: 0;
+              background: #dcfce7;
+              border: 1px solid #86efac;
+              color: #15803d;
+              animation: stepCheckPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+          }
+
+          /* The thirteen Agreement Workflow cards have titles far longer than
+             the rest of the stack — "Agreement Execution / Signature" against
+             "Ticket" — so 138px leaves their chips stepping in and out down
+             the whole run.
+
+             They get a wider column of their own rather than widening the one
+             above: a single column sized for the longest agreement title
+             would strand the short cards' chips ("Ticket", "Subject") a third
+             of the way across the panel. The thirteen are a contiguous block,
+             so lining them up with each other is what reads as aligned. */
+          /* .card-title is in the selector to match the depth of the base rule
+             above, not for reach. Emulated encapsulation appends an attribute
+             to every compound, so the base's three of them score (0,6,0) and a
+             shorter selector here loses on specificity however far down the
+             file it sits — which is exactly what left these chips ragged. */
+          &.agreement-step-card .card-title .card-title-text {
+            /* Fits the longest of the thirteen, "Agreement Execution /
+               Signature", in full: a title that overran the column would push
+               its own chip past the rest and break the line it is here to make.
+               Measured off that title at this weight and size, with a little to
+               spare — it is the only one anywhere near the limit. */
+            min-width: 250px;
+          }
+
+          /*
+            The step the pipeline is on right now. It breathes rather than simply
+            sitting highlighted: the card is opened for the reviewer by the app,
+            not by their own click, so it has to say "this one, now" without a
+            label taking up a row.
+          */
+          &.is-active-step {
+            /* Full indigo, not the tint — see the pulse above. */
+            border-color: #6366f1;
+            animation: stepFocusPulse 1.9s ease-in-out infinite;
+          }
+
+          /* Body of the Message Body accordion. No divider above it — the
+             quoted sheet's own border already separates it from the title. */
+          .accordion-body-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            animation: accordionSlideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          /* The mail itself, on its own sheet so the customer's words are
+             clearly quoted content and not the app's own copy */
+          .message-text {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #ffffff;
+            border: 1px solid #e0e7ff;
+            border-radius: 8px;
+            padding: 9px 11px;
+          }
+
+          .forward-box {
+            background: #ffffff;
+            border: 1px solid #e0e7ff;
+            border-left: 3px solid #6366f1;
+            padding: 8px 10px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.75rem;
+            color: #475569;
+
+            .forward-header {
+              font-weight: 700;
+              color: #4f46e5;
+              margin-bottom: 3px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+            }
+          }
+
+          /* Accordion behaviour, mirroring the Message Body card so the two
+             collapsibles in this panel work and look the same. */
+          &.collapsible-card {
+            /* no bottom padding when shut — the title row is the whole card */
+            &:not(.is-expanded) {
+              padding-bottom: 10px;
+            }
+
+            .card-title.clickable-header {
+              cursor: pointer;
+              user-select: none;
+
+              /* With a check present it has already taken the free space, so the
+                 chevron drops its own auto margin and stays beside it rather
+                 than being pushed to the far edge. */
+              .step-done-check + .header-right-action {
+                margin-left: 0;
+              }
+
+              /* Chevron in a small rounded button, no text label */
+              .header-right-action {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                width: 26px;
+                height: 26px;
+                border-radius: 8px;
+                border: 1px solid #e0e7ff;
+                background: #ffffff;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+                transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+
+                .chevron-icon {
+                  color: #64748b;
+                  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+
+                  &.rotated {
+                    transform: rotate(180deg);
+                    color: #4f46e5;
+                  }
+                }
+              }
+
+              &:hover {
+                color: #4f46e5;
+
+                .header-right-action {
+                  border-color: #c7d2fe;
+                  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+
+                  .chevron-icon {
+                    color: #4f46e5;
+                  }
+                }
+              }
+            }
+
+            .insights-grid,
+            .assigned-to-box,
+            .thread-subject,
+            .reason-banner {
+              animation: accordionSlideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+          }
+
+          .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+
+            /* Cards with enough fields to wrap keep a fixed four-column rhythm,
+               so a row never re-flows into five or six thin boxes. */
+            &.four-up {
+              grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+
+            /* An Agreement stage's values. Equal columns gave "Yes" and
+               "Not yet" as much room as the key activity beside them, which
+               left one box nearly empty and the other wrapping to two lines.
+               The activity takes whatever is left; the two short fields take
+               only what they need. */
+            &.agreement-values {
+              /* Verified is a fixed 120px: it holds "Yes" or "Not yet", so
+                 sizing it to that content made the box narrower than its own
+                 "VERIFIED" label and the column jumped between the two answers.
+                 Verified On stays content-sized — it holds a timestamp, which
+                 is one length. The key activity takes whatever is left. */
+              grid-template-columns: minmax(0, 1fr) 120px auto;
+
+              /* Their content is a word or a timestamp — never long enough to
+                 need a break, and a break is what would make them wide again. */
+              .insight-box .val {
+                white-space: nowrap;
+              }
+
+              .insight-box .val.is-text {
+                white-space: normal;
+              }
+            }
+
+            .insight-box {
+              background: #ffffff;
+              border: 1px solid #e0e7ff;
+              padding: 8px;
+              border-radius: 8px;
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+
+              .lbl {
+                font-size: 0.65rem;
+                color: #64748b;
+                font-weight: 600;
+                text-transform: uppercase;
+              }
+
+              .val {
+                font-size: 0.78rem;
+                font-weight: 700;
+                color: #1e293b;
+                /* Email addresses and long ids have no spaces to break at, so
+                   they would otherwise push the box past its column. */
+                overflow-wrap: anywhere;
+
+                /* Words that are meant to be read, not scanned for: a name or
+                   a phrase. The rule above breaks anywhere, which is right for
+                   an email address with nowhere to break and wrong here — it
+                   split "Communication" across two lines mid-word. These break
+                   between words, and only inside one when a word genuinely
+                   cannot fit. */
+                &.is-text {
+                  overflow-wrap: break-word;
+                }
+
+                /* Prose, not a value: read as a line of text rather than
+                   picked out at a glance, so it drops the bold and the tight
+                   line spacing the short values use. */
+                &.is-prose {
+                  font-weight: bold;
+                  color: #334155;
+                  line-height: 1.5;
+                }
+
+                &.highlight { color: #4f46e5; }
+                &.sentiment-positive { color: #16a34a; }
+                &.sentiment-negative { color: #dc2626; }
+                &.sentiment-neutral { color: #0284c7; }
+                &.confidence { color: #059669; }
+
+                /* Live SLA clock. Tabular figures stop the row jittering as
+                   the digits change every second. */
+                &.sla-countdown {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  color: #047857;
+                  font-family: monospace;
+                  font-size: 0.85rem;
+                  font-weight: 800;
+                  font-variant-numeric: tabular-nums;
+
+                  .sla-dot {
+                    width: 7px;
+                    height: 7px;
+                    border-radius: 50%;
+                    background: #10b981;
+                    animation: slaPulse 1s ease-in-out infinite;
+                  }
+
+                  &.expired {
+                    color: #b91c1c;
+
+                    .sla-dot {
+                      background: #ef4444;
+                    }
+                  }
+
+                  /* Settled inside the window — nothing is counting any more. */
+                  &.met {
+                    color: #047857;
+
+                    .sla-dot {
+                      animation: none;
+                    }
+                  }
+                }
+              }
+
+              /* The window the clock is running, under it: where it started and
+                 where it runs out, so the countdown is checkable rather than a
+                 number the reviewer has to take on trust. */
+              .sla-window {
+                margin-top: 2px;
+                color: #64748b;
+                font-size: 0.66rem;
+                font-weight: 600;
+                font-variant-numeric: tabular-nums;
+                overflow-wrap: anywhere;
+              }
+            }
+          }
+
+          /*
+            The customer's bookings, when more than one fits the thread and the
+            reviewer has to say which the payment is for. A table rather than
+            chips: the three values only mean anything read across a row, and
+            they have to be compared down the column to be told apart.
+          */
+          .booking-choice {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+
+            .booking-choice-head {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 8px;
+
+              .booking-choice-title {
+                font-size: 0.72rem;
+                font-weight: 800;
+                color: #92400e;
+              }
+
+              .booking-choice-count {
+                flex-shrink: 0;
+                padding: 2px 8px;
+                border-radius: 999px;
+                background: #fef3c7;
+                border: 1px solid #fcd34d;
+                font-size: 0.62rem;
+                font-weight: 700;
+                color: #b45309;
+                white-space: nowrap;
+              }
+            }
+
+            .booking-table {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              /* A customer can hold a dozen bookings; the list scrolls rather
+                 than pushing the rest of the card off screen. */
+              max-height: 210px;
+              overflow-y: auto;
+            }
+
+            .booking-row {
+              display: grid;
+              grid-template-columns: 44px 1.4fr 0.9fr 0.8fr 1fr;
+              align-items: center;
+              gap: 6px;
+              padding: 6px 8px;
+              background: #ffffff;
+              border: 1px solid #fde68a;
+              border-radius: 8px;
+              cursor: pointer;
+              transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+              &:hover {
+                border-color: #f59e0b;
+              }
+
+              &.is-selected {
+                border-color: #d97706;
+                box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.18);
+              }
+
+              .booking-cell {
+                font-size: 0.72rem;
+                font-weight: 600;
+                color: #1e293b;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+
+              .booking-select {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                input[type='radio'] {
+                  width: 15px;
+                  height: 15px;
+                  accent-color: #d97706;
+                  cursor: pointer;
+                }
+              }
+
+              .booking-ref {
+                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+                font-size: 0.68rem;
+                color: #64748b;
+              }
+            }
+
+            /* Column headings, not a row to pick. */
+            .booking-head {
+              background: transparent;
+              border: none;
+              cursor: default;
+              padding-bottom: 0;
+
+              &:hover {
+                border: none;
+              }
+
+              .booking-cell {
+                font-size: 0.6rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                color: #b45309;
+              }
+            }
+          }
+
+          /* Plain container, no surface of its own — it is a block inside the
+             Ticket card now, and a second panel within that card would just
+             double the framing. */
+          .assigned-to-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+
+            /* Names the block, since it no longer has a card title of its own.
+               Set as a caption, matching the .lbl on the boxes above it. */
+            .assigned-to-heading {
+              font-size: 0.65rem;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              color: #64748b;
+            }
+
+            .assigned-list {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 6px;
+
+              @media (max-width: 900px) {
+                grid-template-columns: repeat(2, 1fr);
+              }
+
+              @media (max-width: 550px) {
+                grid-template-columns: 1fr;
+              }
+
+              .assignee-card {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background: #eef2ff;
+                border: 1px solid #c7d2fe;
+                border-radius: 8px;
+                padding: 5px 8px;
+                transition: all 0.15s ease;
+                min-width: 0;
+
+                &:hover {
+                  background: #e0e0ff;
+                  border-color: #a5b4fc;
+                }
+
+                .user-avatar-mini {
+                  width: 24px;
+                  height: 24px;
+                  border-radius: 50%;
+                  background: #4f46e5;
+                  color: #ffffff;
+                  font-size: 0.65rem;
+                  font-weight: 800;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  flex-shrink: 0;
+                }
+
+                .user-details {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0px;
+                  min-width: 0;
+
+                  .assignee-name {
+                    font-size: 0.73rem;
+                    font-weight: 700;
+                    color: #1e1b4b;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                  }
+
+                  .assignee-mail {
+                    font-size: 0.63rem;
+                    color: #4338ca;
+                    text-decoration: none;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+
+                    &:hover {
+                      text-decoration: underline;
+                    }
+
+                    &.missing {
+                      color: #dc2626;
+                      font-style: italic;
+                    }
+                  }
+                }
+              }
+            }
+
+            .assigned-empty {
+              font-size: 0.7rem;
+              color: #94a3b8;
+              font-style: italic;
+            }
+          }
+
+          .reason-banner {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            color: #92400e;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+          }
+
+          .ai-draft-box {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+
+            .draft-title {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 0.75rem;
+              font-weight: 700;
+              color: #4338ca;
+              margin-bottom: 6px;
+
+              .draft-title-left {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              }
+
+              .approve-btn {
+                background: #10b981;
+                color: #ffffff;
+                border: none;
+                padding: 3px 8px;
+                border-radius: 5px;
+                font-size: 0.68rem;
+                font-weight: 700;
+                cursor: pointer;
+
+                &:hover {
+                  background: #059669;
+                }
+              }
+            }
+
+            .draft-body {
+              font-size: 0.75rem;
+              color: #334155;
+              line-height: 1.4;
+              font-style: italic;
+            }
+          }
+        }
+        /* Thread Content Scrollable Area */
+        .thread-body-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 5px 16px 14px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+
+          &::-webkit-scrollbar {
+            width: 5px;
+          }
+          &::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+          }
+
+
+
+          /* Which pipeline step the thread is on. Sits above every section so the
+             reviewer always knows what the card is currently asking them about. */
+          .stage-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 10px;
+
+            .stage-label {
+              font-size: 0.62rem;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              color: #6366f1;
+            }
+
+            .stage-name {
+              flex: 1;
+              font-size: 0.78rem;
+              font-weight: 700;
+              color: #1e293b;
+            }
+
+            &.is-busy {
+              border-color: #a5b4fc;
+              background: #e0e7ff;
+            }
+
+            /* What the step is doing, in words, while it runs */
+            .stage-running {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              min-width: 0;
+
+              .stage-running-text {
+                font-size: 0.66rem;
+                font-weight: 600;
+                color: #4338ca;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+
+            .stage-pill {
+              padding: 2px 8px;
+              border-radius: 999px;
+              font-size: 0.6rem;
+              font-weight: 800;
+              letter-spacing: 0.03em;
+
+              &.stage-done {
+                background: #dcfce7;
+                color: #15803d;
+              }
+
+              &.stage-waiting {
+                background: #fef3c7;
+                color: #b45309;
+              }
+
+              &.stage-pending {
+                background: #e2e8f0;
+                color: #475569;
+              }
+            }
+          }
+
+          /* The pipeline's advance button, mirrored at the foot of the card */
+          .stage-action {
+            display: flex;
+            /* Both buttons on one row, sharing the width — neither is a banner
+               across the card. Email Response first, then the advance button.
+               A lone button does not stretch, so the row centres it. */
+            align-items: stretch;
+            justify-content: center;
+            gap: 8px;
+
+            /* The stopped step's three choices, sharing the row in equal parts.
+               Outlined, and colour-coded the same way as the pipeline card's
+               copy: neutral to write, indigo to run, amber to correct. */
+            .gate-action-btn {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              flex: 1 1 0;
+              min-width: 0;
+              padding: 8px 8px;
+              border-radius: 10px;
+              font-size: 0.72rem;
+              font-weight: 800;
+              font-family: inherit;
+              white-space: nowrap;
+              cursor: pointer;
+              transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+              svg {
+                flex-shrink: 0;
+              }
+
+              span {
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              &:focus-visible {
+                outline: 2px solid #6366f1;
+                outline-offset: 2px;
+              }
+
+              &.gate-email {
+                background: #eef2ff;
+                border: 1px solid #c7d2fe;
+                color: #4338ca;
+
+                &:hover {
+                  background: #e0e7ff;
+                  border-color: #a5b4fc;
+                  color: #3730a3;
+                }
+              }
+
+              /*
+                Alone on the row — a non-payment thread, where writing back IS
+                the step. Sized to its text rather than stretched across the
+                panel, and filled, since there is nothing beside it to compete
+                with for the eye.
+              */
+              &:only-child {
+                flex: 0 0 auto;
+                padding: 8px 18px;
+                background: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #4338ca 100%);
+                border: none;
+                color: #ffffff;
+                box-shadow: 0 3px 10px -3px rgba(79, 70, 229, 0.55);
+
+                &:hover {
+                  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 55%, #3730a3 100%);
+                  color: #ffffff;
+                }
+              }
+
+              /* The only one of the row that runs the step, and the one the
+                 reviewer is meant to reach for — so it is filled from the
+                 start rather than only under the pointer. Edit & Save beside
+                 it stays a tint, which is what makes this one read as the
+                 action and that one as the way back to it. */
+              &.gate-verify {
+                background: #4f46e5;
+                border: 1px solid #4338ca;
+                color: #ffffff;
+                box-shadow: 0 2px 8px -3px rgba(79, 70, 229, 0.55);
+
+                &:hover {
+                  background: #4338ca;
+                  border-color: #3730a3;
+                  color: #ffffff;
+                }
+
+                /*
+                  A correction was just saved and nothing has been re-run against
+                  it. Filled and breathing until it is pressed: saving on its own
+                  changes no verdict, and a row of three equal buttons gave no
+                  clue which of them finishes the job.
+                */
+                &.is-next {
+                  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+                  border-color: #4338ca;
+                  color: #ffffff;
+                  animation: gateVerifyPulse 1.8s ease-in-out infinite;
+                }
+              }
+
+              &.gate-edit {
+                background: #fffbeb;
+                border: 1px solid #fde68a;
+                color: #b45309;
+
+                &:hover {
+                  background: #fef3c7;
+                  border-color: #fcd34d;
+                  color: #92400e;
+                }
+              }
+
+              /* Shutting the ticket ends the thread's life in this panel, so it
+                 is the one button drawn in the colour that means "final". */
+              &.gate-close {
+                background: #fef2f2;
+                border: 1px solid #fecaca;
+                color: #b91c1c;
+
+                &:hover {
+                  background: #fee2e2;
+                  border-color: #fca5a5;
+                  color: #991b1b;
+                }
+              }
+
+              &:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+              }
+            }
+
+            /* Same button as the pipeline's .node-primary-action — it is the
+               same action, so it must not look like a different one. Keep the
+               two in step if either is restyled. */
+            .stage-action-btn {
+              position: relative;
+              overflow: hidden;
+              /*
+                Sized to itself and centred, not stretched across the card. It
+                used to take the full width whenever it was the only button in
+                the row, which made a single "Move to…" read as a banner rather
+                than as the one thing to click.
+              */
+              flex: 0 0 auto;
+              min-width: 240px;
+              max-width: 100%;
+              padding: 8px 22px;
+              border: none;
+              border-radius: 10px;
+              font-size: 0.74rem;
+              font-weight: 800;
+              color: #ffffff;
+              cursor: pointer;
+              background: linear-gradient(135deg, #059669 0%, #047857 55%, #065f46 100%);
+              box-shadow:
+                0 4px 14px -4px rgba(5, 150, 105, 0.55),
+                inset 0 1px 0 rgba(255, 255, 255, 0.22);
+              transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.22s ease, filter 0.22s ease;
+
+              /* light sweep that runs across the button on hover */
+              &::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(
+                  100deg,
+                  rgba(255, 255, 255, 0) 35%,
+                  rgba(255, 255, 255, 0.28) 50%,
+                  rgba(255, 255, 255, 0) 65%
+                );
+                transform: translateX(-100%);
+              }
+
+              &:hover {
+                filter: saturate(1.1);
+                transform: translateY(-1.5px);
+                box-shadow:
+                  0 8px 20px -6px rgba(5, 150, 105, 0.6),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+                &::after {
+                  animation: stageActionSheen 0.9s ease-out;
+                }
+              }
+
+              &:active {
+                transform: translateY(0) scale(0.985);
+              }
+
+              &:focus-visible {
+                outline: 2px solid #6ee7b7;
+                outline-offset: 2px;
+              }
+            }
+
+            /*
+              The "Close this ticket?" row, which takes the place of the buttons
+              until it is answered. The question takes the free width so Yes and
+              No sit together on the right, sized to their text — a destructive
+              answer should not be the width of half the panel.
+            */
+            &.ticket-close-confirm {
+              align-items: center;
+              justify-content: flex-start;
+
+              .confirm-question {
+                flex: 1 1 auto;
+                min-width: 0;
+                font-size: 0.74rem;
+                font-weight: 800;
+                color: #1e293b;
+              }
+
+              .gate-action-btn {
+                flex: 0 0 auto;
+                padding: 8px 14px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                color: #475569;
+
+                &:hover:not(:disabled) {
+                  background: #f1f5f9;
+                }
+
+                /* Yes keeps the red it was asked in. */
+                &.gate-close {
+                  background: #fef2f2;
+                  border-color: #fecaca;
+                  color: #b91c1c;
+
+                  &:hover:not(:disabled) {
+                    background: #fee2e2;
+                  }
+                }
+              }
+            }
+          }
+
+        }
+
+        /* Empty State */
+        .empty-thread-state {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          text-align: center;
+          color: #64748b;
+
+          h3 {
+            margin: 8px 0 4px 0;
+            color: #1e293b;
+            font-size: 1rem;
+          }
+
+          p {
+            font-size: 0.78rem;
+            max-width: 260px;
+          }
+        }
+      }
+
+      /* ----------------------------------------------------
+         PART 3: RIGHT SIDE - WORKFLOW AUTOMATION DESIGNER
+         ---------------------------------------------------- */
+      .part-3-workflow-designer {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+
+        app-workflow-visualizer {
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 0px;
+          height: 100%;
+          min-height: 0;
+          overflow: hidden;
+        }
+      }
+
+    }
+  }
+
+}
+
+/* Pulse on the live SLA clock's dot, so it reads as ticking. */
+/* Hover sweep for .stage-action-btn — mirrors the pipeline's sheenSweep. */
+@keyframes stageActionSheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slaPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
+}
+
+/*
+  The Verify button after a correction is saved: filled, and breathing until it
+  is pressed. Saving writes the row but changes no verdict — this is what says
+  the job is not finished yet.
+*/
+@keyframes gateVerifyPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0), 0 3px 10px -3px rgba(79, 70, 229, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.22), 0 6px 16px -4px rgba(79, 70, 229, 0.6);
+  }
+}
+
+/* Nobody should be made to watch a button breathe if they have asked the system
+   not to animate.
+
+   The fill alone no longer marks it out — Verify is filled on every card now,
+   not only after a save — so the ring the pulse reaches at its widest is left
+   on permanently instead. */
+@media (prefers-reduced-motion: reduce) {
+  .gate-action-btn.gate-verify.is-next {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.22), 0 6px 16px -4px rgba(79, 70, 229, 0.6);
+  }
+}

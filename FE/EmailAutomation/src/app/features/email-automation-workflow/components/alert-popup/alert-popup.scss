@@ -1,0 +1,1377 @@
+/* ======================================================
+   ALERT RESPONSE POPUP
+   Opened from the bell badge beside a row's Ticket ID.
+   Shares the shell <app-thread-attachments> uses over part
+   1, with the red the alert badge itself wears in place of
+   the app's usual indigo — this is the one popup that is
+   only ever on screen because something needs attention.
+   ====================================================== */
+
+.alert-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  border-radius: 16px;
+  animation: alert-popup-fade 0.16s ease-out;
+}
+
+.alert-popup-dialog {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 12px 24px rgba(15, 23, 42, 0.14),
+    0 32px 64px rgba(15, 23, 42, 0.24);
+  animation: alert-popup-rise 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes alert-popup-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes alert-popup-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-popup-backdrop,
+  .alert-popup-dialog {
+    animation: none;
+  }
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.alert-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 14px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-bottom: 1px solid #fecaca;
+
+  .alert-popup-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .alert-popup-head-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.32);
+  }
+
+  h4 {
+    margin: 0;
+    flex-shrink: 0;
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+  }
+
+  /* Styled as a chip, matching the "ID: THR-…" badge in the Thread Details
+     header and the equivalent in the Attachments popup. */
+  .alert-popup-thread {
+    flex-shrink: 1;
+    min-width: 0;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 0.66rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alert-popup-close {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #dc2626;
+    }
+  }
+}
+
+/* ── Body ───────────────────────────────────────────── */
+
+.alert-popup-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+/* One labelled block: the Email History. */
+.alert-popup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* A pill rather than plain text, matching the app's own vocabulary for
+   "what is this" labels — colour comes from the two section modifiers below. */
+.alert-popup-section-label {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.alert-popup-text {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+
+/* ── Respond ────────────────────────────────────────── */
+
+/* Sits inside the reply block, under the customer's words, so it reads as
+   "answer this" rather than as another popup-level action. */
+.alert-respond-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.alert-respond-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+  background: #ffffff;
+  color: #b91c1c;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-color: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.28);
+  }
+}
+
+/* ── Inline compose ─────────────────────────────────── */
+
+/* Deliberately a panel in the body flow, not a floating card: the reply it
+   answers has to stay readable above it, which is the whole reason this is not
+   the Email Response popup. Neutral rather than red — the alert is the thing
+   above, this is the reviewer's own workspace. */
+.alert-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.alert-compose-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.alert-compose-label {
+  background: #e0e7ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+}
+
+/* Sits beside the label rather than centred: margin-right pushes the thread id
+   back out to the right edge the head's space-between would have given it. */
+.alert-compose-step {
+  margin-right: auto;
+  min-width: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #6366f1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alert-compose-thread {
+  min-width: 0;
+  color: #64748b;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alert-compose-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .alert-compose-field-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+  }
+
+  /* Only the To row has one: it carries the Cc / Bcc toggles opposite its
+     label, which is where a mail client puts them. */
+  .alert-compose-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: #94a3b8;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 150px;
+  }
+}
+
+/* The one decision in the compose that reaches outside the mail. Only a drafted
+   reply whose template allows it asks the question at all. */
+.alert-compose-ticket {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  /* Dotted outline rather than a filled panel: it marks the decision without
+     competing with the fields around it. */
+  background: transparent;
+  border: 3px dotted #7a7a7a;
+  border-radius: 10px;
+  transition: border-color 0.2s ease;
+
+  /* Send was pressed with the question still open. The row is the reason the
+     reply did not go, so it says so itself rather than leaving the reviewer to
+     match a line of red text at the bottom to a control further up. */
+  &.needs-answer {
+    border-color: #dc2626;
+    background: rgba(254, 226, 226, 0.45);
+    animation: ticketChoiceNudge 0.45s ease;
+
+    .alert-compose-ticket-hint {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+  }
+
+  /* Answered, so it stops asking for attention and fades back. */
+  &.is-answered {
+    border-color: #cbd5e1;
+
+    .alert-compose-ticket-ask svg,
+    .alert-compose-ticket-label {
+      color: #334155;
+    }
+  }
+
+  .alert-compose-ticket-ask {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+
+    svg {
+      flex-shrink: 0;
+      color: #b45309;
+    }
+  }
+
+  .alert-compose-ticket-label {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #92400e;
+    white-space: nowrap;
+  }
+
+  .alert-compose-ticket-hint {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+
+  .alert-compose-ticket-choice {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .alert-compose-ticket-btn {
+    min-width: 62px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: #ffffff;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    /* Solid from the start: red closes, green leaves it open. */
+    &.yes {
+      background: #dc2626;
+      border: 1px solid #b91c1c;
+      color: #ffffff;
+      box-shadow: 0 2px 8px -3px rgba(220, 38, 38, 0.6);
+
+      &:hover {
+        background: #b91c1c;
+      }
+    }
+
+    &.no {
+      background: #059669;
+      border: 1px solid #047857;
+      color: #ffffff;
+      box-shadow: 0 2px 8px -3px rgba(5, 150, 105, 0.6);
+
+      &:hover {
+        background: #047857;
+      }
+    }
+
+    /* The one that was picked keeps its colour; the other stands down to white,
+       so the decision is still readable after the body is scrolled. */
+    &.yes:not(.is-chosen),
+    &.no:not(.is-chosen) {
+      .alert-compose-ticket.is-answered & {
+        background: #ffffff;
+        box-shadow: none;
+      }
+    }
+
+    .alert-compose-ticket.is-answered &.yes:not(.is-chosen) {
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+
+    .alert-compose-ticket.is-answered &.no:not(.is-chosen) {
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    &.is-chosen {
+      box-shadow: 0 3px 10px -3px rgba(15, 23, 42, 0.45);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
+    }
+  }
+}
+
+.alert-compose-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.alert-compose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &.ghost {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+
+    &:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+  }
+
+  &.primary {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: 1px solid #4f46e5;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+
+    &:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.36);
+    }
+  }
+}
+
+/* ── Cc / Bcc toggles ───────────────────────────────── */
+
+.alert-compose-toggles {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alert-compose-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+
+  /* Reads as pressed while its row is open, so the toggle says which way it
+     will go next rather than only what it is called. */
+  &.is-open {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #4338ca;
+  }
+}
+
+/* What a closed row is still holding. Without it, collapsing a filled Cc
+   would take those addresses off screen while they are still on the reply. */
+.alert-compose-toggle-count {
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 0.62rem;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* ── Sent Responses history ──────────────────────
+
+   Reads as a record of what went out: restrained, hairline-bordered, with the
+   colour spent only on the two things that carry meaning — the outbound glyph
+   and the status. Anything louder would compete with the customer's reply
+   above, which is the thing the popup opened for.
+   ────────────────────────────────────────── */
+
+.alert-history-label {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.alert-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-history-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 15px 11px;
+  border-radius: 13px;
+  background: #ffffff;
+  border: 1px solid #e9eef5;
+  overflow: hidden;
+
+  /* Layered rather than one soft blur: a hairline ambient shadow to seat the
+     card, a wider one to lift it. */
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+
+  /* The rail is what says "outbound" before a word is read. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, #6366f1 0%, #4f46e5 55%, #4338ca 100%);
+  }
+
+  &:hover {
+    border-color: #dbe3ef;
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.05),
+      0 8px 22px rgba(15, 23, 42, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-history-card {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+/* ── Head ───────────────────────────────── */
+
+.alert-history-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.alert-history-icon {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 1px solid #dbe1fb;
+  color: #4f46e5;
+}
+
+.alert-history-subject {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.815rem;
+  font-weight: 700;
+  letter-spacing: -0.011em;
+  color: #0f172a;
+}
+
+/* Uppercase and tracked out, so a date beside a subject reads as metadata
+   rather than as more of the sentence. */
+.alert-history-when {
+  flex-shrink: 0;
+  font-size: 0.635rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: #9aa7b8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Addresses ──────────────────────────── */
+
+.alert-history-addresses {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.alert-history-address {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+
+  dt {
+    flex-shrink: 0;
+    width: 26px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #b3bccb;
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.735rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: #46556b;
+    word-break: break-word;
+  }
+}
+
+/* ── Body ───────────────────────────────── */
+
+.alert-history-body {
+  font-size: 0.775rem;
+  line-height: 1.62;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fafbfd;
+  border: 1px solid #eef2f7;
+}
+
+/* ── Attachment chips ─────────────────────── */
+
+/* Two to a row, the same grid the Assigned To list uses, and collapsing to one
+   column at the same width -- a file name has nowhere to go under 550px. */
+.alert-history-files {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+
+  @media (max-width: 550px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The card itself holds no click of its own: the body and the save button
+   inside it are the two targets, and the card only draws the frame. */
+.alert-history-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 5px 6px 5px 8px;
+  border-radius: 9px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #e6e9ff;
+    border-color: #a5b4fc;
+
+    .alert-history-file-icon {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+    }
+  }
+}
+
+/* Anchor on a non-image, button on an image. Styled as one thing, so the two
+   cannot come to look like different kinds of card. */
+.alert-history-file-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.alert-history-file-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  color: #4f46e5;
+  transition: all 0.15s ease;
+}
+
+.alert-history-file-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.alert-history-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1e1b4b;
+  font-size: 0.715rem;
+  font-weight: 700;
+}
+
+.alert-history-file-size {
+  color: #4338ca;
+  font-size: 0.63rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Always drawn, never hover-revealed: this one is the whole reason the card is
+   here for some reviewers, and a control you have to find is not one. */
+.alert-history-file-save {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #6366f1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #ffffff;
+  }
+
+  &:disabled {
+    cursor: default;
+    color: #a5b4fc;
+  }
+}
+
+.alert-history-file-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #c7d2fe;
+  border-top-color: #4f46e5;
+  animation: alert-history-file-spin 0.6s linear infinite;
+}
+
+@keyframes alert-history-file-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-history-file-spinner {
+    animation-duration: 1.8s;
+  }
+}
+
+.alert-history-file-error {
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+
+/* ── Foot ───────────────────────────────── */
+
+.alert-history-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.665rem;
+  font-weight: 600;
+  color: #9aa7b8;
+}
+
+.alert-history-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.alert-history-avatar {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  color: #475569;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.alert-history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.alert-history-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+}
+
+/* ── Received mail ─────────────────────────── */
+
+/* A mail the customer sent. Amber where a sent reply is indigo, so the two
+   sides of the conversation can be told apart down the list before a word
+   is read. */
+.alert-history-card.is-received {
+  background: #fffdf7;
+  border-color: #f5e6c8;
+
+  &::before {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .alert-history-icon {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fde68a;
+    color: #b45309;
+  }
+
+  .alert-history-body {
+    background: #ffffff;
+    border-color: #f3ead6;
+  }
+}
+
+/* Sits at the right of the footer, where a sent reply's status pill sits:
+   it is the footer's only child, so space-between alone would leave it left. */
+.alert-history-direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.alert-history-direction-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+}
+
+/* ── Loading / empty / error ─────────────────── */
+
+/* Skeletons hold the section's height so the compose below does not jump when
+   the list arrives. */
+.alert-history-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-history-skeleton {
+  height: 96px;
+  border-radius: 13px;
+  border: 1px solid #eef2f7;
+  background: linear-gradient(90deg, #f6f8fb 25%, #eaeff6 37%, #f6f8fb 63%);
+  background-size: 400% 100%;
+  animation: alert-history-shimmer 1.5s ease infinite;
+}
+
+@keyframes alert-history-shimmer {
+  from { background-position: 100% 50%; }
+  to   { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-history-skeleton {
+    animation: none;
+  }
+}
+
+.alert-history-empty,
+.alert-history-error {
+  padding: 13px 14px;
+  border-radius: 11px;
+  font-size: 0.755rem;
+  line-height: 1.5;
+}
+
+/* Worded and coloured as normal, because not having replied yet is normal. */
+.alert-history-empty {
+  background: #fafbfd;
+  border: 1px dashed #d8e0ea;
+  color: #8f9cb0;
+  text-align: center;
+}
+
+.alert-history-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+/* ── Compose attachments ─────────────────────── */
+
+.alert-compose-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.alert-compose-attachments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* A <label> wrapping a hidden <input type="file">, so the styled control opens
+   the picker without any script behind it. */
+.alert-compose-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 7px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #ffffff;
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+}
+
+.alert-compose-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.alert-compose-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 4px 3px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.alert-compose-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alert-compose-attachment-size {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.alert-compose-attachment-remove {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background: #dc2626;
+    color: #ffffff;
+  }
+}
+
+.alert-compose-attachments-empty {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* ── Compose error ─────────────────────────── */
+
+.alert-compose-error {
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.alert-compose-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Image preview ──────────────────────────────────────
+   Over the popup, not over the app: inset to the dialog so
+   the reply the image was attached to frames it, and the ×
+   returns to exactly the scroll position it was opened at.
+   ────────────────────────────────────────────────────── */
+
+.alert-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(2px);
+  border-radius: 16px;
+  animation: alert-popup-fade 0.14s ease-out;
+}
+
+.alert-preview-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 13px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.32);
+  animation: alert-popup-rise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.alert-preview-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 11px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e9eef5;
+}
+
+.alert-preview-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1f2937;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.alert-preview-size {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #8f9cb0;
+  font-size: 0.635rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The primary of the two: filled, where Open is outlined. Looking at an image
+   and then wanting it is the common path out of this panel. */
+.alert-preview-save {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+
+  &:hover:not(:disabled) {
+    background: #4338ca;
+    border-color: #4338ca;
+  }
+
+  &:disabled {
+    cursor: default;
+    background: #a5b4fc;
+    border-color: #a5b4fc;
+  }
+}
+
+/* White on indigo, where the card's spinner is indigo on white. */
+.alert-preview-spinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  animation: alert-history-file-spin 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-preview-spinner {
+    animation-duration: 1.8s;
+  }
+}
+
+.alert-preview-error {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.alert-preview-open {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #4f46e5;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.16s ease;
+
+  &:hover {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+  }
+}
+
+.alert-preview-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 7px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.16s ease;
+
+  &:hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
+}
+
+/* The checkerboard reads through a transparent PNG, so a logo saved on
+   transparency is not mistaken for one on white. */
+.alert-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: auto;
+  background-color: #f1f5f9;
+  background-image:
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-preview,
+  .alert-preview-panel {
+    animation: none;
+  }
+}
+
+/* One short shake when Send is refused for a missing Yes / No. Runs once —
+   a repeating animation on a form row reads as an error that is still
+   happening, when all that is needed is to point at the control. */
+@keyframes ticketChoiceNudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}

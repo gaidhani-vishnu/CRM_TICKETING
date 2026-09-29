@@ -1,0 +1,116 @@
+<section class="drilldown" *ngIf="request">
+
+  <div class="drill-head">
+    <div class="drill-title">
+      <h3>{{ request.intent }} · Ticket Drill Down</h3>
+      <small>{{ subtitle }}</small>
+    </div>
+
+    <div class="drill-summary">
+      <span class="summary-chip blue">{{ filtered.length }} visible</span>
+      <span class="summary-chip">{{ scopedCount }} open</span>
+      <span class="summary-chip red" *ngIf="overdueCount > 0">{{ overdueCount }} overdue</span>
+    </div>
+
+    <button class="drill-close" type="button" (click)="onClose()" title="Close the drill-down">
+      <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="drill-tools">
+    <input
+      class="wide"
+      type="search"
+      [value]="search"
+      (input)="onSearchChange($any($event.target).value)"
+      placeholder="Search ticket ID, customer, email, unit, owner…"
+      aria-label="Search tickets"
+    />
+
+    <select
+      [value]="subIntentFilter"
+      (change)="onSubIntentChange($any($event.target).value)"
+      aria-label="Filter by sub-intent"
+    >
+      <option value="ALL">All sub-intents</option>
+      <option *ngFor="let subIntent of subIntents" [value]="subIntent">{{ subIntent }}</option>
+    </select>
+
+    <select
+      [value]="stageFilter"
+      (change)="onStageChange($any($event.target).value)"
+      aria-label="Filter by workflow stage"
+    >
+      <option value="ALL">All workflow stages</option>
+      <option *ngFor="let stage of stages; trackBy: trackByStageOption" [value]="stage.key">
+        {{ stage.label }}
+      </option>
+    </select>
+
+    <select
+      [value]="slaFilter"
+      (change)="onSlaChange($any($event.target).value)"
+      aria-label="Filter by SLA"
+    >
+      <option value="ALL">All SLA</option>
+      <option value="On Track">On Track</option>
+      <option value="Overdue">Overdue</option>
+    </select>
+
+    <button class="clear-filter" type="button" (click)="clearFilters()">Clear</button>
+  </div>
+
+  <div class="detail-table-wrap">
+    <table class="detail-table">
+      <thead>
+        <tr>
+          <th>Ticket ID</th>
+          <th>Sub-Intent</th>
+          <th>Customer</th>
+          <th>Email</th>
+          <th>Unit</th>
+          <th>Current Stage</th>
+          <th>Received On</th>
+          <th>SLA Due</th>
+          <th>SLA</th>
+          <th>Assigned To</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let ticket of filtered; trackBy: trackByTicket">
+          <td><span class="ticket-link">{{ ticket.ticketId }}</span></td>
+          <td>{{ ticket.subIntent }}</td>
+          <td>{{ ticket.customerName }}</td>
+          <td class="col-email" [title]="ticket.customerEmail">{{ ticket.customerEmail || '—' }}</td>
+          <td>{{ ticket.unit || '—' }}</td>
+          <td>{{ ticket.stageLabel }}</td>
+          <td>{{ ticket.receivedOn || '—' }}</td>
+          <td>{{ ticket.slaDue || '—' }}</td>
+          <td>
+            <span [ngClass]="ticket.isOverdue ? 'sla-bad' : 'sla-good'">{{ ticket.slaStatus }}</span>
+          </td>
+          <td>{{ ticket.assignedTo }}</td>
+          <td>
+            <button
+              class="row-action"
+              type="button"
+              (click)="onOpen(ticket)"
+              title="Open this ticket's workflow on the Email Automation screen"
+            >
+              Open
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="filtered.length === 0">
+      No tickets match the selected filters.
+    </div>
+  </div>
+</section>

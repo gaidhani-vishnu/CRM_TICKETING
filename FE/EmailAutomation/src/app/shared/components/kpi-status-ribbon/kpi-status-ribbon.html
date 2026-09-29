@@ -1,0 +1,112 @@
+<div class="kpi-ribbon-wrapper" [class.collapsed]="isCollapsed">
+  <!-- Expanded Content Bar -->
+  <div class="kpi-ribbon-content" *ngIf="!isCollapsed">
+    <div class="ribbon-metrics-list">
+
+      <!-- 1. Open Tickets -->
+      <div class="kpi-pill kpi-open" title="Open tickets queue and category split">
+        <span class="pill-icon open-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+        </span>
+        <span class="pill-label">Open:</span>
+        <span class="pill-value open-val">{{ summary.openCount || 0 }}</span>
+        <span class="pill-split">
+          ({{ summary.paymentCount || 0 }} Payment · {{ summary.nonPaymentCount || 0 }} Non-Payment)
+        </span>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <!-- 2. Overdue Tickets -->
+      <div class="kpi-pill kpi-overdue" title="Overdue tickets past SLA">
+        <span class="pill-icon overdue-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </span>
+        <span class="pill-label">Overdue:</span>
+        <span class="pill-value overdue-val">{{ summary.overdueCount || 0 }}</span>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <!-- 3. Closed Tickets -->
+      <div class="kpi-pill kpi-closed" title="Settled tickets across dates">
+        <span class="pill-icon closed-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </span>
+        <span class="pill-label">Closed Today:</span>
+        <span class="pill-value closed-val">{{ summary.closedCount || 0 }}</span>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <!-- 4. SLA % -->
+      <div class="kpi-pill kpi-sla" title="Current SLA percentage against 90% target">
+        <span class="pill-icon sla-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </span>
+        <span class="pill-label">SLA:</span>
+        <span class="pill-value sla-val" [class.healthy]="isSlaHealthy" [class.unhealthy]="!isSlaHealthy">
+          {{ summary.slaPercent || 0 }}%
+        </span>
+      </div>
+
+      <div class="ribbon-divider"></div>
+
+      <!-- 5. Needs Intervention -->
+      <div class="kpi-pill kpi-intervention" title="Tickets stalled requiring human intervention">
+        <span class="pill-icon alert-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </span>
+        <span class="pill-label">User Intervention:</span>
+        <span class="pill-value intervention-val">{{ summary.interventionTotal || 0 }}</span>
+      </div>
+
+    </div>
+
+    <!-- Collapse Button -->
+    <button
+      *ngIf="collapsible"
+      type="button"
+      class="ribbon-toggle-btn"
+      (click)="toggleCollapse()"
+      title="Collapse KPI ribbon"
+      aria-label="Collapse KPI ribbon"
+    >
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Collapsed Minimal Strip with Expand Button -->
+  <div class="kpi-ribbon-collapsed-bar" *ngIf="isCollapsed">
+    <button
+      type="button"
+      class="ribbon-expand-pill"
+      (click)="toggleCollapse()"
+      title="Expand KPI ribbon"
+    >
+      <span class="expand-icon">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </span>
+      <span class="expand-text">KPIs (Open: {{ summary.openCount || 0 }} · Overdue: {{ summary.overdueCount || 0 }})</span>
+    </button>
+  </div>
+</div>

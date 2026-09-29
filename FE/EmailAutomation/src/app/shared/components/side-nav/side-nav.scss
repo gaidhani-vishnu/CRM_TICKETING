@@ -1,0 +1,168 @@
+/*
+  The workspace side bar. Dark glass on the same indigo gradient the two
+  screens use, with the indigo → violet accent of the header's avatar and
+  pills, so it reads as part of the same product rather than a frame around it.
+*/
+:host {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  height: 100vh;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 220px;
+  height: 100%;
+  padding: 12px 10px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 27, 75, 0.96) 100%);
+  border-right: 1px solid rgba(129, 140, 248, 0.18);
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &.collapsed {
+    width: 64px;
+    // Labels are already gone at this width; letting it overflow is what lets
+    // the hover name below sit outside the bar instead of being clipped.
+    overflow: visible;
+
+    .side-nav-label {
+      opacity: 0;
+      width: 0;
+    }
+
+    /* Icons only: the item's name appears beside it on hover or focus. */
+    [data-tooltip] {
+      position: relative;
+
+      &::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 14px);
+        top: 50%;
+        z-index: 1100;
+        padding: 6px 12px;
+        font-size: 0.76rem;
+        font-weight: 650;
+        color: #ffffff;
+        white-space: nowrap;
+        background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+        border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-4px, -50%);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      /* The small pointer back to the icon. */
+      &::before {
+        content: '';
+        position: absolute;
+        left: calc(100% + 8px);
+        top: 50%;
+        z-index: 1100;
+        border: 6px solid transparent;
+        border-right-color: #6366f1;
+        border-left-width: 0;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-4px, -50%);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      &:hover::after,
+      &:hover::before,
+      &:focus-visible::after,
+      &:focus-visible::before {
+        opacity: 1;
+        transform: translate(0, -50%);
+      }
+    }
+  }
+}
+
+.side-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  margin-top: 8px;
+}
+
+.side-nav-toggle,
+.side-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #c7d2fe;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(99, 102, 241, 0.18);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #818cf8;
+    outline-offset: 2px;
+  }
+}
+
+.side-nav-toggle {
+  color: #a5b4fc;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.15);
+  border-radius: 12px 12px 0 0;
+  padding-bottom: 2px;
+}
+
+.side-nav-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.side-nav-item.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.side-nav-logout {
+  color: #fca5a5;
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(239, 68, 68, 0.22);
+  }
+}
+
+.side-nav-label {
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-nav {
+    transition: none;
+  }
+}

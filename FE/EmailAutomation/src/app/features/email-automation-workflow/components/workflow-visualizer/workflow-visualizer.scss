@@ -1,0 +1,928 @@
+/* ======================================================
+   WORKFLOW PIPELINE — premium timeline
+   The rail is a separate left gutter; each card is a
+   free-standing surface to its right. The two never overlap.
+   ====================================================== */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+
+  /* Timeline geometry — the rail maths depends on these */
+  --rail-col: 22px;
+  --rail-gap: 13px;
+  --card-gap: 10px;
+  --dot-size: 22px;
+  /* distance from the row's top edge to the dot's centre, lined up with the
+     STEP badge on the card beside it */
+  --dot-center: 19px;
+  /* one width for every rail segment — a heavier line for completed steps
+     read as a bar rather than a track */
+  --rail-w: 1.5px;
+
+  --rail-idle: #e5e9f0;
+  --rail-done: #34d399;
+}
+
+.workflow-visualizer-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 55% at 50% 0%, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0) 60%),
+    linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+
+  /* ---------------- Header ---------------- */
+  .panel-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    flex-shrink: 0;
+    border-radius: 16px 16px 0 0;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+
+      h3 {
+        margin: 0;
+        font-size: 0.86rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.01em;
+        background: linear-gradient(120deg, #0f172a 0%, #334155 45%, #4338ca 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+    }
+
+    .scroll-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Sits before the scroll arrow; same 28px box so the header does not
+       change height when a run starts. */
+    .header-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+
+      .wf-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(165, 180, 252, 0.65);
+        border-top-color: #4338ca;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+
+    .scroll-controls .scroll-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      cursor: pointer;
+      border-radius: 9px;
+      border: 1px solid rgba(203, 213, 225, 0.9);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+
+      svg {
+        transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      &:hover {
+        color: #4f46e5;
+        border-color: #a5b4fc;
+        box-shadow:
+          0 4px 12px rgba(79, 70, 229, 0.18),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+        svg {
+          transform: translateY(1px);
+        }
+      }
+
+      &:active {
+        transform: scale(0.92);
+      }
+    }
+  }
+
+  /* ---------------- Toast ---------------- */
+  .action-toast-sub {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+    color: #ffffff;
+    flex-shrink: 0;
+    background: linear-gradient(120deg, #059669 0%, #10b981 50%, #059669 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+    animation: toastDropIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ---------------- Scroll body ---------------- */
+  .workflow-content {
+    flex: 1 1 0px;
+    height: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px 10px 18px;
+    display: flex;
+    flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      border-radius: 8px;
+      background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+
+      &:hover {
+        background: linear-gradient(180deg, #a5b4fc 0%, #818cf8 100%);
+      }
+    }
+  }
+
+  /* ======================================================
+     TIMELINE
+     ====================================================== */
+  .nodes-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--card-gap);
+    position: relative;
+
+    /* Only entrance animation: replayed on thread switch, never on scroll. */
+    &.is-switching-thread .timeline-row {
+      animation: timelineStaggerSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--node-index, 0) * 0.035s);
+    }
+  }
+
+  /* One row: rail gutter + card, side by side and independent */
+  .timeline-row {
+    display: grid;
+    grid-template-columns: var(--rail-col) 1fr;
+    column-gap: var(--rail-gap);
+    align-items: stretch;
+    position: relative;
+
+    /* ---------------- Rail gutter ----------------
+       .connector-line and .timeline-dot are deliberately NOT nested inside
+       .timeline-indicator. Angular's emulated encapsulation appends an
+       [_ngcontent] attribute to every compound in the chain, so that extra
+       level would out-specify the state overrides below (.status-done etc.)
+       and the rail would stay grey no matter what they set. */
+    .timeline-indicator {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      width: var(--rail-col);
+    }
+
+    .connector-line {
+      position: absolute;
+      width: var(--rail-w);
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 2px;
+      background: var(--rail-idle);
+
+      /* overshoot the row by the gap so the rail reads as one unbroken line */
+      &.connector-top {
+        top: calc(-1 * var(--card-gap));
+        bottom: calc(100% - var(--dot-center));
+      }
+
+      &.connector-bottom {
+        top: var(--dot-center);
+        bottom: calc(-1 * var(--card-gap));
+      }
+    }
+
+    .timeline-dot {
+        position: absolute;
+        top: calc(var(--dot-center) - var(--dot-size) / 2);
+        width: var(--dot-size);
+        height: var(--dot-size);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* white collar so the rail never touches the dot's edge */
+        border: 2px solid #ffffff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+        transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s ease;
+
+        &.dot-done {
+          background: linear-gradient(140deg, #34d399 0%, #059669 100%);
+          color: #ffffff;
+          box-shadow:
+            0 0 0 3px rgba(16, 185, 129, 0.14),
+            0 2px 8px rgba(5, 150, 105, 0.35);
+        }
+
+        &.dot-waiting {
+          background: linear-gradient(140deg, #fbbf24 0%, #d97706 100%);
+          color: #ffffff;
+          box-shadow:
+            0 0 0 3px rgba(245, 158, 11, 0.16),
+            0 2px 8px rgba(217, 119, 6, 0.35);
+        }
+
+        &.dot-pending {
+          background: #ffffff;
+          box-shadow:
+            0 0 0 2px #e2e8f0 inset,
+            0 1px 3px rgba(15, 23, 42, 0.08);
+
+          .pending-inner-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            transition: background 0.25s ease;
+          }
+        }
+
+        /* Stepped over: a filled slate dot, distinct from PENDING's hollow one
+           — the pipeline passed this step rather than stopping short of it. */
+        &.dot-skipped {
+          background: #cbd5e1;
+          color: #475569;
+          box-shadow:
+            0 0 0 2px #e2e8f0 inset,
+            0 1px 3px rgba(15, 23, 42, 0.08);
+        }
+
+        &.dot-blocked {
+          background: linear-gradient(140deg, #fb7185 0%, #e11d48 100%);
+          color: #ffffff;
+          box-shadow:
+            0 0 0 3px rgba(244, 63, 94, 0.16),
+            0 2px 8px rgba(225, 29, 72, 0.35);
+        }
+
+        &.dot-running {
+          background: linear-gradient(140deg, #818cf8 0%, #4f46e5 100%);
+          color: #ffffff;
+          box-shadow:
+            0 0 0 3px rgba(99, 102, 241, 0.18),
+            0 2px 12px rgba(79, 70, 229, 0.55);
+
+          .pulse-ring {
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            border: 2px solid #818cf8;
+            animation: radarPulse 1.8s infinite ease-out;
+          }
+
+          .pulse-core {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffffff;
+          }
+        }
+    }
+
+    /* ---------------- Card ---------------- */
+    .pipeline-node-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      padding: 11px 11px;
+      cursor: pointer;
+      border-radius: 14px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: linear-gradient(180deg, #ffffff 0%, #fdfdff 100%);
+      box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 6px 16px -12px rgba(15, 23, 42, 0.3);
+      transition:
+        transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.28s ease,
+        background 0.28s ease;
+
+      /* left accent bar, revealed by state */
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 12px;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
+        opacity: 0;
+        transform: scaleY(0.3);
+        transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      &:hover {
+        transform: translateY(-2px);
+        border-color: rgba(165, 180, 252, 0.85);
+        box-shadow:
+          0 2px 4px rgba(15, 23, 42, 0.04),
+          0 14px 28px -18px rgba(79, 70, 229, 0.55);
+
+        &::before {
+          opacity: 0.55;
+          transform: scaleY(1);
+        }
+      }
+    }
+
+    &:hover .timeline-dot {
+      transform: scale(1.08);
+    }
+
+    &.not-selectable .pipeline-node-card {
+      cursor: default;
+    }
+
+    /* ---------------- Row states ---------------- */
+    /* Selection is marked by the left accent bar alone — no ring, no coloured
+       outline. Boxing the whole card competed with the focus-step blink. */
+    &.selected {
+      .pipeline-node-card {
+        border-color: rgba(226, 232, 240, 0.95);
+        background: linear-gradient(180deg, #ffffff 0%, #f7f7ff 100%);
+        /* The bar is an inset shadow, not the ::before box: a 3.5px-wide
+           element cannot carry the card's 14px corner radius — the browser
+           scales it into a lens that spills past the rounded corner. An inset
+           shadow is clipped by the card's own radius, so it curves perfectly. */
+        box-shadow:
+          inset 3.5px 0 0 0 #6366f1,
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 10px 22px -16px rgba(79, 70, 229, 0.45);
+
+        &::before {
+          display: none;
+        }
+
+        &:hover {
+          box-shadow:
+            inset 3.5px 0 0 0 #6366f1,
+            0 2px 4px rgba(15, 23, 42, 0.04),
+            0 14px 28px -18px rgba(79, 70, 229, 0.55);
+        }
+      }
+
+      .pipeline-title {
+        color: #312e81;
+      }
+
+      .timeline-dot {
+        transform: scale(1.1);
+      }
+    }
+
+    &.status-done {
+      .pipeline-node-card {
+        background: linear-gradient(180deg, #fcfdfd 0%, #f7faf9 100%);
+
+        &::before {
+          background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+        }
+      }
+
+      /* Green left bar on the completed card. Same inset-shadow technique as
+         the selected bar so it follows the corner radius; :not(.selected)
+         keeps the indigo selection bar winning when both apply. */
+      &:not(.selected) .pipeline-node-card {
+        box-shadow:
+          inset 3.5px 0 0 0 #10b981,
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 6px 16px -12px rgba(5, 150, 105, 0.35);
+
+        &:hover {
+          border-color: rgba(52, 211, 153, 0.7);
+          box-shadow:
+            inset 3.5px 0 0 0 #059669,
+            0 2px 4px rgba(15, 23, 42, 0.04),
+            0 14px 28px -18px rgba(5, 150, 105, 0.5);
+        }
+
+        &::before {
+          display: none;
+        }
+      }
+
+      .pipeline-title {
+        color: #334155;
+      }
+
+      /* Completed rail is solid green end to end, so how far the pipeline has
+         got is readable from the track alone. */
+      .connector-line {
+        background: var(--rail-done);
+      }
+
+      /* green collar on the dot instead of the plain white one */
+      .timeline-dot.dot-done {
+        border-color: #d1fae5;
+        box-shadow:
+          0 0 0 2px rgba(16, 185, 129, 0.45),
+          0 2px 8px rgba(5, 150, 105, 0.35);
+      }
+    }
+
+    &.status-waiting {
+      .pipeline-node-card {
+        background: linear-gradient(180deg, #fffaf9 0%, #fff5f5 100%);
+        border-color: #fecdd3;
+        box-shadow:
+          0 1px 2px rgba(190, 18, 60, 0.05),
+          0 10px 22px -16px rgba(225, 29, 72, 0.55);
+
+        &::before {
+          background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+          opacity: 0.9;
+          transform: scaleY(1);
+        }
+      }
+
+      .pipeline-title {
+        color: #be123c;
+      }
+    }
+
+    /* Stepped over: the card recedes, but the rail stays green through it —
+       the pipeline did get past this point, it just had nothing to do here. */
+    &.status-skipped {
+      .pipeline-node-card {
+        background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+        border-style: dashed;
+
+        &::before {
+          display: none;
+        }
+      }
+
+      .pipeline-title,
+      .pipeline-subtitle {
+        color: #94a3b8;
+      }
+
+      /* The chip picks up the row's green accent once the step is finished, so
+         the time reads as "this step matched at", not as loose grey text. */
+      .pipeline-completed-at {
+        color: #047857;
+        background: #ecfdf5;
+        border-color: rgba(52, 211, 153, 0.45);
+      }
+
+      .connector-line {
+        background: var(--rail-done);
+      }
+    }
+
+    &.status-pending {
+      .pipeline-node-card {
+        background: linear-gradient(180deg, #fdfdfe 0%, #fafbfc 100%);
+      }
+
+      .pipeline-title {
+        color: #475569;
+      }
+
+      .pipeline-subtitle {
+        color: #94a3b8;
+      }
+    }
+
+    /* ---------------- RUNNING ---------------- */
+    &.is-running {
+      .pipeline-node-card {
+        background: linear-gradient(180deg, #fbfaff 0%, #f4f3ff 100%);
+
+        /* The rotating conic ring that used to run around a live card is gone.
+           What says the step is working is this fade in / fade out: it is the
+           card actually doing something that breathes, so the eye lands on the
+           step the pipeline is running rather than on the one queued after it. */
+        animation: runningCardBlink 2s ease-in-out infinite;
+
+        &::before {
+          opacity: 1;
+          transform: scaleY(1);
+        }
+
+        /* the blink owns border-color and box-shadow, so it has to stand down
+           for hover to show */
+        &:hover {
+          animation: none;
+        }
+      }
+
+      .pipeline-title {
+        color: #3730a3;
+      }
+
+      /* the rail leaving a running step flows downward */
+      .connector-bottom {
+        background: linear-gradient(180deg, #818cf8 0%, rgba(129, 140, 248, 0.15) 45%, #818cf8 100%);
+        background-size: 100% 220%;
+        animation: railFlow 1.8s linear infinite;
+      }
+    }
+
+    /* ======================================================
+       FOCUS STEP — the pipeline's current stage: the step that started and
+       stopped for the reviewer (WAITING), or — while nothing is — the last one
+       it actually finished. Never the PENDING step queued after that; it has
+       not been opened yet and has nothing on it to point the eye at.
+       The indigo border, the live rail above it and the beacon ring on its dot
+       mark the row. The fade in / fade out belongs to .is-running instead — a
+       step just sitting here, not being worked, blinking as hard as one that
+       is read as the step in progress, which this is not.
+       ====================================================== */
+    &.is-focus:not(.is-running) {
+      .pipeline-node-card {
+        border-color: rgba(129, 140, 248, 0.9);
+        background: linear-gradient(180deg, #ffffff 0%, #f6f6ff 100%);
+        box-shadow:
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 0 0 3px rgba(99, 102, 241, 0.1),
+          0 10px 24px -18px rgba(79, 70, 229, 0.6);
+
+        &::before {
+          opacity: 1;
+          transform: scaleY(1);
+        }
+      }
+
+      /* rail feeding into this step is live, not idle */
+      .connector-top {
+        background: linear-gradient(180deg, var(--rail-done) 0%, #818cf8 100%);
+      }
+
+      .timeline-dot {
+        /* beacon ring that expands out of the dot, whatever its own status
+           colour — DONE or WAITING both mark the current stage the same way */
+        &::after {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          border: 2px solid #818cf8;
+          animation: radarPulse 2s infinite ease-out;
+          pointer-events: none;
+        }
+      }
+    }
+
+    /* ---------------- Card content ---------------- */
+    /* The step number and its status pill, side by side. The title is no
+       longer in here — see .pipeline-title below.
+
+       Packed left rather than spread: space-between pushed the pill to the far
+       edge, and on a narrow card that left a lane of empty white between the
+       two things the row is for. They read as one label now. */
+    .card-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+
+      .step-num-badge {
+        font-size: 0.55rem;
+        font-weight: 800;
+        line-height: 1.4;
+        white-space: nowrap;
+        padding: 1px 5px;
+        border-radius: 5px;
+        letter-spacing: 0.05em;
+        font-variant-numeric: tabular-nums;
+        color: #4f46e5;
+        background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+        border: 1px solid rgba(165, 180, 252, 0.8);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    /* Its own row, so the full card width is the title's and the longest of
+       them ("Agreement Execution / Signature") still reads as one line. */
+    .pipeline-title {
+      margin-top: 4px;
+      font-size: 0.79rem;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      transition: color 0.25s ease;
+    }
+
+    .pipeline-subtitle {
+      font-size: 0.68rem;
+      color: #64748b;
+      line-height: 1.35;
+      transition: color 0.25s ease;
+    }
+
+    /* When the step finished. Quieter and smaller than the subtitle above it:
+       it is a fact to look up, not something to read on the way past. */
+    .pipeline-completed-at {
+      margin-top: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      align-self: flex-start;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: #424850;
+      background: #f1f5f9;
+      border: 1px solid #c2cddb;
+      font-variant-numeric: tabular-nums;
+      transition:
+        color 0.25s ease,
+        background 0.25s ease,
+        border-color 0.25s ease;
+
+      svg {
+        flex-shrink: 0;
+        opacity: 0.85;
+      }
+    }
+
+    .pipeline-running {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #3730a3;
+      border: 1px solid rgba(165, 180, 252, 0.9);
+      background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.22);
+    }
+
+    /* The status pill sits beside the STEP badge on one line, and the column
+       it lives in is the narrower of the workspace pair now. Its padding and
+       tracking are set so the longest label the pipeline writes — USER
+       VERIFICATION REQUIRED, 26 characters — still fits on that line at the
+       column's minimum width; widen either and it wraps below the badge and
+       every card in the stack grows a row taller. */
+    .pipeline-status {
+      flex-shrink: 0;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.55rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1.5;
+      white-space: nowrap;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+
+      &.status-done {
+        color: #047857;
+        background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+        border-color: rgba(52, 211, 153, 0.55);
+      }
+
+      /* Amber rather than rose — a step asking for input is not a failure, and
+         it matches its own amber rail dot. Its label reads "User Intervention",
+         which is longer than the other three, so it drops the wide tracking to
+         stay on one line beside the step title. */
+      &.status-waiting {
+        color: #92400e;
+        background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+        border-color: rgba(217, 119, 6, 0.45);
+        letter-spacing: 0.03em;
+      }
+
+      &.status-pending {
+        color: #64748b;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        border-color: rgba(203, 213, 225, 0.8);
+      }
+
+      &.status-blocked {
+        color: #b91c1c;
+        background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
+        border-color: rgba(248, 113, 113, 0.5);
+      }
+
+      /* Stepped over on purpose — slate, and dashed so it does not read as a
+         step still queued behind the others. */
+      &.status-skipped {
+        color: #475569;
+        background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+        border-style: dashed;
+        border-color: rgba(100, 116, 139, 0.5);
+      }
+    }
+
+    .node-primary-action {
+      position: relative;
+      overflow: hidden;
+      margin-top: 8px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #ffffff;
+      cursor: pointer;
+      background: linear-gradient(135deg, #059669 0%, #047857 55%, #065f46 100%);
+      box-shadow:
+        0 4px 14px -4px rgba(5, 150, 105, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.22s ease, filter 0.22s ease;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          100deg,
+          rgba(255, 255, 255, 0) 35%,
+          rgba(255, 255, 255, 0.28) 50%,
+          rgba(255, 255, 255, 0) 65%
+        );
+        transform: translateX(-100%);
+      }
+
+      span,
+      svg {
+        position: relative;
+        z-index: 1;
+      }
+
+      svg {
+        transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      &:hover {
+        filter: saturate(1.1);
+        transform: translateY(-1.5px);
+        box-shadow:
+          0 8px 20px -6px rgba(5, 150, 105, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+        &::after {
+          animation: sheenSweep 0.9s ease-out;
+        }
+
+        svg {
+          transform: translateX(4px);
+        }
+      }
+
+      &:active {
+        transform: translateY(0) scale(0.985);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #6ee7b7;
+        outline-offset: 2px;
+      }
+    }
+  }
+}
+
+/* ======================================================
+   KEYFRAMES
+   ====================================================== */
+
+@keyframes runningCardBlink {
+  0%,
+  100% {
+    border-color: rgba(129, 140, 248, 0.55);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 0 0 0 rgba(99, 102, 241, 0);
+  }
+  50% {
+    border-color: rgba(99, 102, 241, 1);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 0 0 4px rgba(99, 102, 241, 0.14),
+      0 12px 26px -18px rgba(79, 70, 229, 0.8);
+  }
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes railFlow {
+  0% {
+    background-position: 0 -120%;
+  }
+  100% {
+    background-position: 0 120%;
+  }
+}
+
+@keyframes timelineStaggerSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastDropIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheenSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect users who ask the OS to calm motion down */
+@media (prefers-reduced-motion: reduce) {
+  .workflow-visualizer-container *,
+  .workflow-visualizer-container *::before,
+  .workflow-visualizer-container *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

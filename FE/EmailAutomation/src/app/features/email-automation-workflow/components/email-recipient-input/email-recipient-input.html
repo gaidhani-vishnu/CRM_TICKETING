@@ -1,0 +1,38 @@
+<!--
+  One box that looks and behaves like a single field, with the pills laid out
+  inside it and the typing box as the last item on the line — so a long list
+  wraps and the caret stays where the next address goes.
+-->
+<div class="recipient-row" (click)="onRowClick($event)">
+
+  <span
+    class="recipient-pill"
+    *ngFor="let address of recipients; let i = index"
+    [class.is-invalid]="!isValid(address)"
+    [title]="isValid(address) ? address : address + ' — does not look like an email address'"
+  >
+    <span class="recipient-pill-dot" aria-hidden="true"></span>
+    <span class="recipient-pill-text">{{ address }}</span>
+
+    <button
+      type="button"
+      class="recipient-pill-remove"
+      (click)="removeAt(i)"
+      [attr.aria-label]="'Remove ' + address"
+      title="Remove"
+    >×</button>
+  </span>
+
+  <input
+    #textBox
+    type="text"
+    class="recipient-text"
+    [id]="inputId"
+    [(ngModel)]="text"
+    [placeholder]="recipients.length ? '' : placeholder"
+    (keydown)="onKeyDown($event)"
+    (blur)="onBlur()"
+    (paste)="onPaste($event)"
+    autocomplete="off"
+  />
+</div>

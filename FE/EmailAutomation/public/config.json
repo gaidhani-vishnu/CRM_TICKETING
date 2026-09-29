@@ -1,0 +1,137 @@
+{
+  "apiBaseUrl": "https://localhost:44309/api",
+  "environmentName": "development",
+  "appName": "Pride Email Automation",
+  "version": "1.0.0",
+
+  "fallbackUser": { "name": "NAMRATA", "emailId": "CRMHEAD@PRIDEWORLDCITY.COM" },
+
+  "updatedBy": "CRM UI",
+
+  "users": [
+    { "name": "NIKITA K.", "emailId": "CRM@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
+    { "name": "SONAL", "emailId": "CRM3@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
+    { "name": "AMIT", "emailId": "CRM11@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
+    { "name": "PRINC JAIN", "emailId": "CRM5@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "TWINKLE", "emailId": "CRM10@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "KAILASH D", "emailId": "CRM2@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "SANJANA", "emailId": "CRM4@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "SHRUTI M", "emailId": "CRM8@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "BHAGYASHREE", "emailId": "CRM1@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "ADITI", "emailId": "CRM9@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "RITA", "emailId": "RITA@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "SURAJ", "emailId": "CRM7@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" }
+  ],
+
+  "bookingStatusSlots": {
+    "Pre-Agreement": [
+      "TRANSACTION FORM",
+      "TRANSACTION FORM CHECKED",
+      "APPROVE TRANSACTION FORM",
+      "ALLOTMENT LETTER / LOI",
+      "DRAFT AGREEMENT MAILED",
+      "SDRC COLLECTED",
+      "BSL/OWN CONT. COLLECTED",
+      "DRAFT AGREEMENT APPROVED BY CLIENT",
+      "AGREEMENT PREPARATION",
+      "AGREEMENT EXECUTION & REGISTRATION SCHEDULED"
+    ],
+    "Post-Agreement": [
+      "BOOKING DOCUMENT & AGREEMENT SCANNED & UPLOADED",
+      "DOCUMENT HANDOVER",
+      "TDS CHALLAN COLLECTED",
+      "INTIMATION OF PROVISIONAL POSSESSION / FINAL POSSESSION",
+      "CUSTOMER APPOINTMENT SCHEDULE",
+      "ENGINEERING CHECKLIST UPLOADED",
+      "WOW CHECKLIST UPLOADED",
+      "CUSTOMER ACCEPTANCE",
+      "CRM NOC",
+      "ACCOUNT NOC",
+      "POSSESSION LETTER ISSUED"
+    ],
+    "Post-Possession": [
+      "FILE SENT FOR BINDING",
+      "FILE BINDING DONE"
+    ]
+  },
+
+  "projectMappings": [
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-A-B-C-D",
+      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-E-H",
+      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "RIO TOWER",
+      "users": ["PIYUSH"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL F-G",
+      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
+    },
+
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "SOHO",
+      "users": ["RITA", "SURAJ"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - C-D",
+      "users": ["RITA", "SURAJ"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - L-M",
+      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - E-H-J-K",
+      "users": ["RITA", "SURAJ"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - F-G",
+      "users": ["RITA", "SURAJ"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A1-A2-A3-B2",
+      "users": ["BHAGYASHREE", "ADITI"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A6-A7-B1",
+      "users": ["BHAGYASHREE", "ADITI"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A4-A5",
+      "users": ["BHAGYASHREE", "ADITI"]
+    },
+
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON - A B C",
+      "users": ["PRINC JAIN", "TWINKLE"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON - D E F",
+      "users": ["PRINC JAIN", "TWINKLE"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "SHRIDHAM - L BUILDING",
+      "users": ["PIYUSH"]
+    }
+  ]
+}

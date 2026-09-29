@@ -1,0 +1,662 @@
+<div class="email-receipts-container">
+  <!-- Search & Action Header -->
+  <div class="receipts-header">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2"
+        fill="none">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" [placeholder]="searchPlaceholder" [value]="searchTerm"
+        (input)="onSearchChange($any($event.target).value)" />
+      <button *ngIf="searchTerm" class="clear-search" (click)="onSearchChange('')">✕</button>
+    </div>
+
+    <!--
+      Which column the box searches. Left on "All columns" the search works as
+      it always has; picked down to one, a typed value can only match that
+      column — the reviewer looking up TKT-2026-000037 wants the ticket, not
+      every thread whose body quotes it.
+    -->
+    <div class="search-field-filter">
+      <button
+        class="filter-btn"
+        [class.active]="isSearchFiltered"
+        [class.is-open]="isSearchFieldMenuOpen"
+        (click)="toggleSearchFieldMenu()"
+        data-tooltip="Search in column"
+        [attr.aria-label]="'Search in column: ' + searchFieldLabel"
+        [attr.aria-expanded]="isSearchFieldMenuOpen"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        <!-- A dot rather than a count: it only says "something is going on
+             here" — while the menu is open, and while a column is filtering
+             after it has closed again. -->
+        <span class="filter-dot" *ngIf="isSearchFiltered || isSearchFieldMenuOpen" aria-hidden="true"></span>
+      </button>
+
+      <!--
+        Two panels side by side, not one panel changing its mind: the column
+        list stays where it is and its values open beside it, so what is being
+        chosen from stays visible while the choice is made.
+
+        Both are inside the popover because this panel is ~300px wide with
+        overflow hidden — a flyout hung off the outside edge would be cut off
+        at the panel border rather than crossing onto the pipeline. The popover
+        widens to the full search row as the values open, so neither half is
+        squeezed until then.
+      -->
+      <div class="pill-menu filter-menu" [class.has-values]="previewField" *ngIf="isSearchFieldMenuOpen">
+        <!-- Step one: which column. -->
+        <div class="filter-menu-columns">
+          <span class="filter-menu-head">Search in</span>
+
+          <button
+            class="pill-menu-item"
+            *ngFor="let field of searchFields"
+            [class.active]="searchField === field.key"
+            [class.previewing]="previewField && previewField === field.key"
+            (mouseenter)="previewColumn(field.key)"
+            (focus)="previewColumn(field.key)"
+            (click)="selectSearchField(field.key)"
+          >
+            <span class="filter-menu-value">{{ field.label }}</span>
+
+            <!-- Every real column has values behind it; 'All columns' is the
+                 whole answer already, so it gets a tick instead. -->
+            <svg class="filter-menu-more" *ngIf="field.key" viewBox="0 0 24 24" width="12" height="12" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <svg class="filter-menu-check" *ngIf="!field.key && !searchField" viewBox="0 0 24 24" width="12" height="12"
+              fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Step two, in its own panel: which value. Picking one filters at once. -->
+        <div class="filter-menu-values" *ngIf="previewField">
+          <span class="filter-menu-head">{{ previewFieldLabel }}</span>
+
+          <!-- Ticket ID has a value per thread; without this the list is a scroll. -->
+          <div class="value-search">
+            <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2" fill="none">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              [placeholder]="'Filter ' + previewFieldLabel + '...'"
+              [value]="valueSearch"
+              (input)="onValueSearchChange($any($event.target).value)"
+              (click)="$event.stopPropagation()"
+            />
+          </div>
+
+          <div class="value-list">
+            <button
+              class="pill-menu-item"
+              [class.active]="searchField === previewField && columnValueFilter === ''"
+              (click)="selectColumnValue('')"
+            >
+              <span class="filter-menu-value">{{ allColumnValuesLabel }}</span>
+              <span class="pill-menu-count">{{ allCount }}</span>
+            </button>
+
+            <button
+              class="pill-menu-item"
+              *ngFor="let entry of columnValues"
+              [class.active]="searchField === previewField && columnValueFilter === entry.value"
+              [class.is-zero]="!entry.count"
+              (click)="selectColumnValue(entry.value)"
+            >
+              <span class="filter-menu-value" [title]="entry.value">{{ entry.value }}</span>
+              <span class="pill-menu-count">{{ entry.count }}</span>
+            </button>
+
+            <span class="pill-menu-empty" *ngIf="!columnValues.length">
+              {{ valueSearch ? 'Nothing matches that.' : 'No thread on this day has a ' + previewFieldLabel + ' yet.' }}
+            </span>
+          </div>
+
+          <!-- Said rather than hidden: 'Ticket ID' lists nothing for the threads
+               node 1 has not reached, and a short list needs explaining. -->
+          <span class="filter-menu-note" *ngIf="columnValues.length && columnBlankCount">
+            {{ columnBlankCount }} with no {{ previewFieldLabel }} yet.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!--
+      Everything off, in one click — the typed term, the funnel's column and
+      value, and whichever pill is in force. Only on screen while there is
+      something to clear, so the header does not carry a dead button all day.
+    -->
+    <button
+      class="clear-filters-btn"
+      *ngIf="hasActiveFilters"
+      (click)="clearAllFilters()"
+      data-tooltip="Clear all filters"
+      aria-label="Clear all filters"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none"
+        stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Ticket summary: the pivot over the whole day, not just what is on screen -->
+    <button class="summary-btn" (click)="openSummary()" title="Ticket summary">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+    </button>
+
+    <div class="view-toggle">
+      <button class="toggle-btn" [class.active]="viewMode === 'list'" (click)="setViewMode('list')"
+        title="Inbox List View">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+      </button>
+      <button class="toggle-btn" [class.active]="viewMode === 'table'" (click)="setViewMode('table')"
+        title="Full Data Grid Table">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="3" y1="15" x2="21" y2="15"></line>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+          <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- What the funnel is narrowing to, said out loud under the search box —
+       a dot on the icon says something is on, not what. -->
+  <div class="search-filter-chip" *ngIf="searchField && columnValueFilter">
+    <span class="chip-field">{{ searchFieldLabel }}</span>
+    <span class="chip-value" [title]="columnValueFilter">{{ columnValueFilter }}</span>
+    <button class="chip-clear" (click)="clearColumnValue()" [attr.aria-label]="'Clear ' + searchFieldLabel + ' filter'">
+      ✕
+    </button>
+  </div>
+
+  <!--
+    The day's workload, cut three ways. Each pill counts as well as filters, so
+    the numbers are on screen before anything is clicked. One choice at a time:
+    picking one drops the others.
+  -->
+  <div class="receipts-pills">
+    <!--
+      The fill behind the active pill, slid into place rather than switched on.
+      Hidden while the owner or alert icon is the choice in force: those carry
+      their own fill, and a thumb left parked behind a now-inactive pill (it is
+      never moved for an icon choice — see movePillThumb()) showed as a stray
+      indigo highlight sitting under an unrelated pill.
+    -->
+    <span
+      class="pill-thumb"
+      [class.is-ready]="pillThumbWidth > 0 && activePill !== 'alert'"
+      [style.transform]="'translateX(' + pillThumbLeft + 'px)'"
+      [style.width.px]="pillThumbWidth"
+      aria-hidden="true"
+    ></span>
+
+    <!-- Everything still open — the work of the day. Its other half is the
+         closed pill beside it. The only pill carrying a word: it says what the
+         list opens on, so no tooltip is needed to repeat it. -->
+    <button
+      class="pill pill-all"
+      #pillButton
+      [class.active]="activePill === 'all'"
+      (click)="selectPill('all')"
+      aria-label="Open Tickets"
+    >
+      <span class="pill-label">Open Ticket</span>
+    </button>
+
+    <!--
+      The closed half of the day, and the other side of All: All is everything
+      still open, this is everything settled. A ticked circle rather than the
+      old ticket stub — the stub said "tickets", which is every row on the
+      list, where the tick says which of them are done with.
+
+      Icon only — the label lives in the custom tooltip instead of a
+      pill-length word.
+    -->
+    <button
+      class="pill pill-icon"
+      #pillButton
+      [class.active]="activePill === 'ticket'"
+      (click)="selectPill('ticket')"
+      data-tooltip="Closed Tickets"
+      aria-label="Closed Tickets"
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <polyline points="8.5 12.2 11 14.7 15.8 9.6"></polyline>
+      </svg>
+    </button>
+
+    <!-- The Workflow Status pill — icon reads as the pipeline steps it filters. -->
+    <button
+      class="pill pill-icon"
+      #pillButton
+      [class.active]="activePill === 'action'"
+      (click)="selectPill('action')"
+      data-tooltip="Action Needed"
+      aria-label="Action Needed"
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="8.5" y="14" width="7" height="7" rx="1.5"></rect>
+        <path d="M6.5 10v1.5a2 2 0 0 0 2 2h1"></path>
+        <path d="M17.5 10v1.5a2 2 0 0 1-2 2h-1"></path>
+      </svg>
+    </button>
+
+    <!--
+      Which step a thread is stopped on and why — main_email_receipts.
+      [Action Status], written by the pipeline panel itself. Distinct from
+      Action Needed above: that one narrows by the per-step [Workflow Status]
+      text ("Pending Instrument Match"); this narrows by the same five words
+      regardless of which step they belong to. A flag, reading as "this
+      thread's current marker", next to the workflow icon it pairs with.
+    -->
+    <button
+      class="pill pill-icon"
+      #pillButton
+      [class.active]="activePill === 'result'"
+      (click)="selectPill('result')"
+      data-tooltip="Action Status"
+      aria-label="Action Status"
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 21V4a1 1 0 0 1 1-1c1 0 1 1 4 1s3-1 5-1 1 1 4 1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1c-3 0-3-1-5-1s-2 1-5 1-4-1-4-1"></path>
+      </svg>
+    </button>
+
+    <!--
+      main_email_receipts.[Alert Received] — on or off, nothing to narrow
+      further, so it is a plain toggle rather than a pill with a menu
+      underneath it.
+
+      The owner filter used to sit here as a sixth icon. It is in the screen
+      header now, shared with the User Dashboard, because it scopes the whole
+      screen rather than only this panel.
+    -->
+    <button
+      class="assignee-trigger alert-trigger"
+      [class.active]="activePill === 'alert'"
+      (click)="selectPill(activePill === 'alert' ? 'all' : 'alert')"
+      data-tooltip="Alert Received"
+      aria-label="Filter to Alert Received"
+    >
+      <svg class="alert-bell-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <!-- How many threads have an alert waiting. Hidden at zero, so the bell
+           only carries a number when there is something to answer. -->
+      <span class="alert-count-badge" *ngIf="alertCount > 0" aria-hidden="true">
+        {{ alertCount > 99 ? '99+' : alertCount }}
+      </span>
+    </button>
+  </div>
+
+  <!--
+    Second line, one per pill that has something to be told.
+
+    Pending Tickets' Open / Closed switch is hidden on request — the row carries
+    `display: none`, so the filter runs on Open. Everything below still works;
+    drop that one line in the SCSS to bring the choice back.
+  -->
+  <div
+    class="receipts-subpills receipts-ticket-switch"
+    *ngIf="activePill === 'ticket'"
+    [class.is-closed]="ticketPillStatus === 'Closed'"
+  >
+    <!--
+      A two-up switch rather than two buttons: the filled half slides across on
+      each choice, which says "one of these two" in a way two separate chips
+      lighting up does not.
+    -->
+    <div class="subpill-switch" role="radiogroup" aria-label="Ticket status" style="display: none;">
+      <span class="switch-thumb" aria-hidden="true"></span>
+
+      <button
+        class="subpill open"
+        role="radio"
+        [attr.aria-checked]="ticketPillStatus === 'Open'"
+        [class.active]="ticketPillStatus === 'Open'"
+        (click)="selectTicketStatus('Open')"
+      >
+        <span>Open</span>
+        <span class="subpill-count">{{ openTicketCount }}</span>
+      </button>
+
+      <button
+        class="subpill closed"
+        role="radio"
+        [attr.aria-checked]="ticketPillStatus === 'Closed'"
+        [class.active]="ticketPillStatus === 'Closed'"
+        (click)="selectTicketStatus('Closed')"
+      >
+        <span>Closed</span>
+        <span class="subpill-count">{{ closedTicketCount }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="receipts-subpills" *ngIf="activePill === 'action'">
+    <div class="subpill-dropdown">
+      <button class="subpill-trigger" (click)="toggleActionMenu()">
+        <span class="subpill-trigger-value">{{ actionStatus || 'All statuses' }}</span>
+        <span class="subpill-count">{{ actionCount }}</span>
+        <svg class="pill-chevron" [class.rotated]="isActionMenuOpen" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <!-- Built from the loaded rows, so it can only offer statuses that exist -->
+      <div class="pill-menu" *ngIf="isActionMenuOpen">
+        <button class="pill-menu-item" [class.active]="actionStatus === ''" (click)="selectActionStatus('')">
+          <span>All statuses</span>
+          <span class="pill-menu-count">{{ allCount }}</span>
+        </button>
+
+        <button
+          class="pill-menu-item"
+          *ngFor="let entry of actionStatuses"
+          [class.active]="actionStatus === entry.status"
+          (click)="selectActionStatus(entry.status)"
+        >
+          <span>{{ entry.status }}</span>
+          <span class="pill-menu-count">{{ entry.count }}</span>
+        </button>
+
+        <span class="pill-menu-empty" *ngIf="!actionStatuses.length">
+          No workflow status on this day's threads yet.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="receipts-subpills" *ngIf="activePill === 'result'">
+    <div class="subpill-dropdown">
+      <button class="subpill-trigger" (click)="toggleResultMenu()">
+        <span class="subpill-trigger-value">{{ resultStatusFilter || 'All statuses' }}</span>
+        <span class="subpill-count">{{ resultCount }}</span>
+        <svg class="pill-chevron" [class.rotated]="isResultMenuOpen" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <!-- Built from the loaded rows, so it can only offer statuses that exist -->
+      <div class="pill-menu" *ngIf="isResultMenuOpen">
+        <button class="pill-menu-item" [class.active]="resultStatusFilter === ''" (click)="selectResultStatus('')">
+          <span>All statuses</span>
+          <span class="pill-menu-count">{{ allCount }}</span>
+        </button>
+
+        <button
+          class="pill-menu-item"
+          *ngFor="let entry of resultStatusOptions"
+          [class.active]="resultStatusFilter === entry.status"
+          (click)="selectResultStatus(entry.status)"
+        >
+          <span>{{ entry.status }}</span>
+          <span class="pill-menu-count">{{ entry.count }}</span>
+        </button>
+
+        <span class="pill-menu-empty" *ngIf="!resultStatusOptions.length">
+          No thread has been opened yet on this day — Action Status is set the
+          first time the pipeline panel evaluates one.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="status-card" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Loading receipts dataset…</span>
+  </div>
+
+  <!-- Error State -->
+  <div class="status-card error" *ngIf="errorMessage">
+    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="status-card empty" *ngIf="!isLoading && !errorMessage && !filteredRows.length">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="1.5" fill="none">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+      <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+    <p>No email receipts match your filter.</p>
+  </div>
+
+  <!-- LIST VIEW MODE (Outlook/Gmail Cards) -->
+  <div class="email-list-wrapper" *ngIf="!isLoading && viewMode === 'list' && filteredRows.length">
+    <div *ngFor="let row of filteredRows; trackBy: trackByThreadId" class="email-item-card"
+      [class.selected]="row.threadId === selectedThreadId" (click)="selectRow(row)">
+      <div class="card-main-row">
+        <div class="card-left">
+          <div class="avatar" [style.background]="getAvatarColor(row.threadId)">
+            {{ getAvatarInitials(row.customerName, row.customerSender) }}
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="card-top">
+            <span class="sender-name">{{ row.customerName || row.customerSender || 'Unknown Customer' }}</span>
+            <span class="timestamp">{{ row.emailDate || row.runDate }}</span>
+          </div>
+
+          <div class="subject-line">{{ row.emailSubject || '(No Subject)' }}</div>
+
+          <!-- The same three facts the grid's Action Status cell shows, with the
+               ticket number in front: the card is the other way of reading the
+               list, so it cannot say less about where a thread is stopped. -->
+          <div
+            class="card-action-status"
+            *ngIf="ticketId(row) || pendingStep(row) || rowActionStatus(row)"
+          >
+            <span class="card-ticket-id" *ngIf="ticketId(row) as ticket">{{ ticket }}</span>
+            <span
+              class="pending-step"
+              *ngIf="pendingStep(row) as step"
+              [class.is-settled]="!pendingState(row)"
+              [class.is-done]="isClosedTicketRow(row)"
+              [title]="isClosedTicketRow(row) ? step : row.workflowStatus || step"
+            >{{ step }}</span>
+            <span
+              class="pending-state-pill"
+              *ngIf="pendingState(row) as state"
+              [class.is-done]="isClosedTicketRow(row)"
+            >
+              <span class="pending-state-dot" aria-hidden="true"></span>{{ state }}
+            </span>
+            <span
+              class="action-status-pill"
+              *ngIf="rowActionStatus(row) as status"
+              [ngClass]="actionStatusClass(status)"
+            >{{ status }}</span>
+          </div>
+
+          <!-- Label / value grid so Status and Remark stay aligned in one column -->
+          <!-- Status is not among these: the card already says where the thread
+               is stopped, in the row above — [Workflow Status] as the step and
+               its state, then [Action Status]. The Status column is a third
+               word for the same thing and read as a contradiction beside them
+               ("PENDING … Pending"). It stays in the grid, which has room to
+               show all three as their own columns. -->
+          <div class="card-meta" *ngIf="row.remark">
+            <ng-container *ngIf="row.remark">
+              <span class="meta-label">Remark</span>
+              <span class="meta-value remark-value" [title]="row.remark">{{ row.remark }}</span>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE VIEW MODE (Grid view) -->
+  <!--
+    The frozen Ticket ID column only draws its edge once there is something
+    scrolling under it: `is-scrolled-x` is set by the scroll handler below, and
+    an unscrolled grid has no reason to carry a divider its other columns do
+    not have.
+  -->
+  <div
+    class="table-wrapper"
+    [class.is-scrolled-x]="isScrolledX"
+    (scroll)="onTableScroll($event)"
+    *ngIf="!isLoading && viewMode === 'table' && filteredRows.length"
+  >
+    <table>
+      <thead>
+        <tr>
+          <th class="mono-id-head">Ticket ID</th>
+          <th class="pending-step-head">Pending Step</th>
+          <th class="pending-state-head">State</th>
+          <th class="action-status-head">Action Status</th>
+          <th>Category</th>
+          <th>Ticket Status</th>
+          <th>Assigned To</th>
+          <th>Status</th>
+          <th>Remark</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of filteredRows; trackBy: trackByThreadId"
+          [class.selected-row]="row.threadId === selectedThreadId" (click)="selectRow(row)">
+          <!-- Ticket raised by node 1; blank until that lookup comes back -->
+          <td class="mono-id">
+            <span class="mono-id-inner">
+              <!-- On every thread, because every thread can be answered: the
+                   badge is the way into the Alert Response popup, and hiding it
+                   on the quiet ones left no way in at all.
+
+                   main_email_receipts.[Alert Received] decides how loud it is,
+                   not whether it is there — red and pulsing when something
+                   needs attention, a flat grey outline when nothing does, so a
+                   column of them still reads at a glance. Clicking opens the
+                   popup for this row without changing the selected one. -->
+              <span
+                class="alert-received-badge"
+                [class.is-alert]="row.alertReceived"
+                role="button"
+                tabindex="0"
+                [title]="row.alertReceived
+                  ? 'Alert received — click to open'
+                  : 'Open responses for this thread'"
+                (click)="openAlertPopup(row, $event)"
+                (keydown.enter)="openAlertPopup(row, $event)"
+              >
+                <svg
+                  class="alert-received-icon"
+                  viewBox="0 0 24 24"
+                  width="9"
+                  height="9"
+                  fill="currentColor"
+                  [attr.aria-label]="row.alertReceived ? 'Alert received' : 'Responses'"
+                >
+                  <path d="M12 2a6 6 0 0 0-6 6c0 7-3 9-3 9h18s-3-2-3-9a6 6 0 0 0-6-6z"></path>
+                  <path d="M9.5 21a2.5 2.5 0 0 0 5 0h-5z"></path>
+                </svg>
+              </span>
+              <span *ngIf="ticketId(row); else noTicket">{{ ticketId(row) }}</span>
+              <ng-template #noTicket><span class="empty-cell">—</span></ng-template>
+            </span>
+          </td>
+          <!-- Three columns, read left to right: the step the thread is stopped
+               on, that it is still pending there, and what the pipeline wants
+               done about it. The first two are the two halves of
+               [Workflow Status] ("Pending Unit Match"), which is why that
+               column is no longer shown on its own.
+
+               The step carries a small rail coloured by its state, so a column
+               of them reads as one line down the grid rather than as a block
+               of same-weight text. -->
+          <td class="pending-step-cell">
+            <span
+              class="pending-step"
+              *ngIf="pendingStep(row) as step; else noStep"
+              [class.is-settled]="!pendingState(row)"
+              [class.is-done]="isClosedTicketRow(row)"
+              [title]="isClosedTicketRow(row) ? step : row.workflowStatus || step"
+            >{{ step }}</span>
+            <ng-template #noStep><span class="empty-cell">—</span></ng-template>
+          </td>
+          <td class="pending-state-cell">
+            <span
+              class="pending-state-pill"
+              *ngIf="pendingState(row) as state; else noState"
+              [class.is-done]="isClosedTicketRow(row)"
+            >
+              <span class="pending-state-dot" aria-hidden="true"></span>{{ state }}
+            </span>
+            <ng-template #noState><span class="empty-cell">—</span></ng-template>
+          </td>
+          <td class="action-status-cell">
+            <span
+              class="action-status-pill"
+              *ngIf="rowActionStatus(row) as status; else noAction"
+              [ngClass]="actionStatusClass(status)"
+            >{{ status }}</span>
+            <ng-template #noAction><span class="empty-cell">—</span></ng-template>
+          </td>
+          <td>{{ row.category }}</td>
+          <td>
+            <span *ngIf="ticketStatus(row) as status; else noStatus" [ngClass]="ticketStatusClass(status)">
+              {{ status }}
+            </span>
+            <ng-template #noStatus><span class="empty-cell">—</span></ng-template>
+          </td>
+          <!-- The owner stored by Unit Match. Empty until that step has run —
+               this cell used to resolve a name for every row on the spot,
+               including threads the pipeline had never looked at. -->
+          <td>
+            <span class="assignee-chip" *ngIf="assignedTo(row) as name" [title]="assigneeTitle(name)">
+              <span class="assignee-avatar">{{ assigneeInitials(name) }}</span>
+              <span class="assignee-name">{{ name }}</span>
+            </span>
+            <span class="empty-cell" *ngIf="!assignedTo(row)">—</span>
+          </td>
+          <td>
+            <span class="row-status-pill" *ngIf="row.status">{{ row.status }}</span>
+            <span class="empty-cell" *ngIf="!row.status">—</span>
+          </td>
+          <td class="truncate" [title]="row.remark">
+            <span class="row-remark-pill" *ngIf="row.remark">{{ row.remark }}</span>
+            <span class="empty-cell" *ngIf="!row.remark">—</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

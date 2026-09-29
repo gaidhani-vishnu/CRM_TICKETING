@@ -1,0 +1,202 @@
+<div class="workflow-visualizer-container">
+  <div class="panel-header">
+    <div class="title-group">
+      <h3>Workflow Pipeline</h3>
+    </div>
+
+    <!-- Single Scroll Toggle Button (Down when at top, Up when at bottom) -->
+    <div class="scroll-controls">
+      <!-- Runs while any step is working, so the reviewer can tell the pipeline
+           is busy without scrolling back to the card that started it -->
+      <span class="header-spinner" *ngIf="isPipelineBusy" [title]="pipelineBusyLabel">
+        <span class="wf-spinner"></span>
+      </span>
+
+      <button
+        class="scroll-btn"
+        (click)="toggleScroll()"
+        [title]="isScrolledToBottom ? 'Scroll to Top' : 'Scroll to Bottom'"
+      >
+        <svg
+          *ngIf="!isScrolledToBottom"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        <svg
+          *ngIf="isScrolledToBottom"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Action Toast Notice -->
+  <div class="action-toast-sub" *ngIf="actionNotice">
+    <span>{{ actionNotice }}</span>
+  </div>
+
+  <div class="workflow-content" #scrollContainer (scroll)="onScroll()">
+    <!-- Workflow Visual Nodes Container (Connected Timeline Layout) -->
+    <div class="nodes-container" [class.is-switching-thread]="isThreadChanging" *ngIf="getWorkflowNodes() as nodes">
+      <!-- One row = the rail gutter on the left + a free-standing card on the
+           right. The rail is a sibling of the card, never inside it. -->
+      <div
+        class="timeline-row"
+        *ngFor="let node of nodes; let idx = index; let last = last"
+        [attr.data-node-id]="node.id"
+        [style.--node-index]="idx"
+        [class.selected]="selectedNodeId === node.id"
+        [class.status-done]="node.status === 'DONE'"
+        [class.status-waiting]="node.status === 'WAITING'"
+        [class.status-pending]="node.status === 'PENDING'"
+        [class.status-skipped]="node.status === 'SKIPPED'"
+        [class.is-running]="node.busy"
+        [class.is-focus]="node.id === focusStepId(nodes)"
+        [class.not-selectable]="!isSelectable(node)"
+      >
+          <!-- Left Timeline Connected Track Node -->
+          <div class="timeline-indicator">
+            <div class="connector-line connector-top" *ngIf="idx > 0"></div>
+            <div class="connector-line connector-bottom" *ngIf="!last"></div>
+
+            <!--
+              The dot follows the step's own status, the same as its pill. A step
+              queued behind an earlier one is not marked out with a red lock — it
+              is simply one the pipeline has not reached.
+            -->
+            <div
+              class="timeline-dot"
+              [ngClass]="node.busy ? 'dot-running' : 'dot-' + node.status.toLowerCase()"
+            >
+              <!-- DONE Checkmark Icon -->
+              <svg *ngIf="!node.busy && node.status === 'DONE'" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+
+              <!-- RUNNING Pulsing Radar -->
+              <ng-container *ngIf="node.busy">
+                <span class="pulse-ring"></span>
+                <span class="pulse-core"></span>
+              </ng-container>
+
+              <!-- WAITING Warning Icon -->
+              <svg *ngIf="!node.busy && node.status === 'WAITING'" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+
+              <!-- SKIPPED: stepped over, nothing to do for this thread -->
+              <svg *ngIf="!node.busy && node.status === 'SKIPPED'" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="7 6 13 12 7 18"></polyline>
+                <polyline points="14 6 20 12 14 18"></polyline>
+              </svg>
+
+              <!-- PENDING Hollow Dot -->
+              <span class="pending-inner-dot" *ngIf="!node.busy && node.status === 'PENDING'"></span>
+            </div>
+          </div>
+
+          <!-- Timeline Card Content -->
+          <div class="pipeline-node-card" (click)="onCardClick(node)">
+            <!--
+              The step number and its status pill share this row; the title has
+              its own below. They used to sit on one line together, which a wide
+              pill ("USER VERIFICATION REQUIRED") left no room for — the title
+              wrapped mid-name and the cards stopped lining up with each other.
+              A title on its own row gets the card's full width and stays on one
+              line however long the pill beside the number is.
+            -->
+            <div class="card-top-row">
+              <span class="step-num-badge">STEP {{ (idx + 1) < 10 ? '0' + (idx + 1) : (idx + 1) }}</span>
+
+              <!-- Running indicator tag. Text only — no spinner. -->
+              <span class="pipeline-running" *ngIf="node.busy" title="Running…">
+                <span>RUNNING</span>
+              </span>
+
+              <!--
+                Status pill. A step waiting on an earlier one reads as PENDING
+                like any other step that has not run — a red BLOCKED beside the
+                amber WAITING above it said the pipeline had failed, when all it
+                is doing is queueing. The reason still travels, as the tooltip.
+              -->
+              <span
+                class="pipeline-status"
+                *ngIf="!node.busy"
+                [ngClass]="'status-' + (node.pillStatus || node.status).toLowerCase()"
+                [title]="node.blockedBy ? 'Waiting on ' + node.blockedBy : statusLabel(node)"
+              >
+                {{ statusLabel(node) }}
+              </span>
+            </div>
+
+            <div class="pipeline-title">{{ node.title }}</div>
+
+            <div class="pipeline-subtitle">{{ node.subtitle }}</div>
+
+            <!--
+              When the step finished. Drawn only from a stored timestamp - the
+              ticket's Created_Date, or the step's own [<step> Match Date],
+              which the backend writes on a match and only on a match. A step
+              with nothing recorded prints no line rather than borrowing another
+              step's time, so a date on a card always means that step matched.
+            -->
+            <div class="pipeline-completed-at" *ngIf="node.completedAt">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <polyline points="12 7 12 12 15.5 14"></polyline>
+              </svg>
+              <span>{{ node.completedAt | date: 'd MMM y, h:mm a' }}</span>
+            </div>
+
+            <!--
+              No buttons are drawn on a card — neither a stopped step's Email
+              Response / Verify / Edit & Save row nor the "Move to next step"
+              button that used to sit here.
+
+              The pipeline says where the thread stands; the panel on the right
+              is where it is worked. Both were rendered in both places, so the
+              same green button appeared twice on screen at once and it was never
+              clear which one was the real one.
+
+              `node.primaryAction` and `node.gateActions` still carry them — see
+              the stage-action row in email-automation-workflow.html, which is
+              where they are now shown.
+            -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED ALWAYS VISIBLE NODE INSPECTOR PANEL
+       Hidden on request — the component and its wiring are left intact, so
+       un-commenting this block is all it takes to bring the panel back.
+  <app-step-inspector
+    *ngIf="getSelectedNode() as activeNode"
+    [node]="activeNode"
+    (primaryActionTriggered)="onPrimaryAction($event)"
+  ></app-step-inspector>
+  -->
+
+  <!--
+    Reviewer-correction popup for whichever gate is missing a value. Rendered by
+    the parent, inside the Thread Details panel: this panel is a narrow column
+    and `.part-panel`'s backdrop-filter traps a fixed-position dialog inside
+    whichever panel it sits in. State and handlers still live here — see the
+    #pipeline binding in email-automation-workflow.html.
+  -->
+</div>

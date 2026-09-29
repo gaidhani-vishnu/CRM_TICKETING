@@ -1,0 +1,352 @@
+<div class="user-dashboard-container">
+
+  <!-- ====================================================== -->
+  <!-- TOP HEADER TOOLBAR                                      -->
+  <!--                                                         -->
+  <!-- The Email Automation screen's own bar, rebuilt here and  -->
+  <!-- made sticky so it stays put while this page scrolls.     -->
+  <!-- Same markup and same styles, so the two screens read as  -->
+  <!-- one continuous bar across the up/down switch.            -->
+  <!-- ====================================================== -->
+  <header class="top-app-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+        </div>
+        <span class="brand-name">CRM Ticket <span class="accent-text">Automation</span></span>
+      </div>
+
+      <div class="title-meta">
+        <h1 class="page-title">User Dashboard</h1>
+        <span class="subtitle-divider">•</span>
+        <span class="subtitle">Intent, Workflow &amp; SLA Overview</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="header-status-badge" *ngIf="lastUpdated">
+        <span class="status-indicator-dot"></span>
+        <span class="status-title">Live</span>
+        <span class="status-value-pill">{{ lastUpdated | date: 'HH:mm:ss' }}</span>
+      </div>
+
+      <!-- Top Screen Switch Button: Back to Ticket Automation -->
+      <button
+        type="button"
+        class="header-nav-switch-btn"
+        (click)="goToAutomation()"
+        title="Back to Ticket Automation"
+        aria-label="Back to Ticket Automation"
+      >
+        <span class="switch-btn-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+        </span>
+        <span class="switch-btn-text">Ticket Automation</span>
+      </button>
+
+      <!-- Whose figures the page is showing. Up here beside the screen switch
+           rather than in the toolbar below with Date: it is the one control
+           that renames the whole screen. The same picker the Email Automation
+           screen carries, over the same shared choice, so moving between the
+           two keeps the person you were looking at. -->
+      <app-user-filter
+        [options]="assigneeOptions"
+        [selected]="selectedAssignee"
+        [disabled]="isLoading"
+        (selectedChange)="onAssigneeChange($event)"
+      ></app-user-filter>
+
+      <!-- The signed-in user's own menu — My Profile / Logout. Compact,
+           same reason as the Email Automation header: no room left for a
+           labelled 4th control beside the status badge, screen switch and
+           owner picker already in this row. -->
+      <app-user-account-menu [compact]="true"></app-user-account-menu>
+    </div>
+  </header>
+
+  <main class="dash-main">
+
+    <!-- ====================================================== -->
+    <!-- FILTER TOOLBAR                                          -->
+    <!-- Date, with the CRM Executive picker up in the header.    -->
+    <!-- Both scope every figure below at once, so the numbers on -->
+    <!-- this page can never disagree; each control shows its own -->
+    <!-- current choice, so nothing restates the two together.    -->
+    <!-- ====================================================== -->
+    <div class="dash-toolbar">
+      <label class="dash-filter">
+        <span class="dash-filter-label">Date</span>
+        <select
+          [value]="selectedDate"
+          (change)="onDateChange($any($event.target).value)"
+          [disabled]="isLoading"
+        >
+          <option value="ALL">All Dates</option>
+          <option *ngFor="let item of dates" [value]="item.date">{{ item.displayDate }}</option>
+        </select>
+      </label>
+
+      <span class="dash-progress" *ngIf="isRefreshing">
+        <span class="wf-spinner"></span>
+        <span>Reading date {{ loadedDates }} of {{ totalDates }}…</span>
+      </span>
+
+      <button class="dash-refresh" type="button" (click)="reload()" [disabled]="isLoading || isRefreshing">
+        <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <!-- ── States ─────────────────────────────────────────── -->
+
+    <div class="dash-state" *ngIf="isLoading">
+      <span class="wf-spinner"></span>
+      <span>Building the dashboard…</span>
+    </div>
+
+    <div class="dash-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="dash-empty" *ngIf="isEmpty">
+      No tickets have been raised for this date and CRM executive.
+    </div>
+
+    <ng-container *ngIf="hasData">
+
+      <!-- ====================================================== -->
+      <!-- UNIFIED 36PX KPI STATUS RIBBON ROW                     -->
+      <!-- Replaces the bulky square cards with the sleek ribbon  -->
+      <!-- ====================================================== -->
+      <app-kpi-status-ribbon [summary]="summary"></app-kpi-status-ribbon>
+
+      <!-- ====================================================== -->
+      <!-- INTENT DONUT · HUMAN INTERVENTION · SLA HEALTH          -->
+      <!-- One row of three. The donut's column is the widest of   -->
+      <!-- the three: it is the only one carrying a figure and a   -->
+      <!-- legend of long intent names side by side.               -->
+      <!-- ====================================================== -->
+      <section class="section-grid">
+
+        <div class="dash-card viz-root">
+          <div class="card-head">
+            <div class="card-title">
+              <h2>Intent Wise Open Ticket Count</h2>
+              <span class="card-sub">What the open queue is made of</span>
+            </div>
+            <span class="card-meta">{{ summary.openCount }} open</span>
+          </div>
+
+          <!-- Part-to-whole at a glance, so a donut is the right form: few
+               segments, and the question is "what share", not "bigger by how
+               much". Three coloured arcs plus a grey fourth — the palette has no
+               fourth hue that stays apart from the first three when any arc can
+               be compared with any other — and that fourth arc is named rather
+               than called "Others" whenever it is a single category. The legend
+               carries the exact counts, so nothing needs a hover. -->
+          <div class="donut-block">
+            <div class="donut-wrap">
+              <svg class="donut" viewBox="0 0 42 42" role="img" aria-label="Open tickets by intent">
+                <circle class="donut-track" cx="21" cy="21" r="15.91549431"></circle>
+
+                <circle
+                  class="donut-slice"
+                  *ngFor="let slice of summary.intentSlices"
+                  [ngClass]="'series-' + slice.slot"
+                  cx="21"
+                  cy="21"
+                  r="15.91549431"
+                  [attr.stroke-dasharray]="slice.len + ' ' + (100 - slice.len)"
+                  [attr.stroke-dashoffset]="slice.offset"
+                  tabindex="0"
+                >
+                  <title>{{ slice.name }}: {{ slice.total }} ({{ slice.pct | number: '1.0-1' }}%)</title>
+                </circle>
+              </svg>
+
+              <div class="donut-center">
+                <span class="donut-center-value">{{ summary.openCount }}</span>
+                <span class="donut-center-label">Open Tickets</span>
+              </div>
+            </div>
+
+            <div class="donut-legend">
+              <div class="donut-legend-row" *ngFor="let intent of summary.intents">
+                <span class="legend-key" [ngClass]="'series-' + intent.slot"></span>
+                <span class="legend-name" [title]="intent.intent">{{ intent.intent }}</span>
+                <span class="legend-value">
+                  {{ intent.total }}
+                  <span class="legend-share">{{ intent.pct | number: '1.0-1' }}%</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-card intervention">
+          <div class="alert-head">
+            <span class="alert-icon">
+              <svg viewBox="0 0 24 24" width="19" height="19" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </span>
+            <div class="alert-title">
+              <h2>User Intervention Required</h2>
+              <span class="card-sub">Open tickets the pipeline cannot advance on its own</span>
+            </div>
+            <div class="alert-total">
+              <strong>{{ summary.interventionTotal }}</strong>
+              <span>tickets</span>
+            </div>
+          </div>
+
+          <div class="intervention-list">
+            <div class="intervention-item" *ngFor="let item of summary.interventions">
+              <span class="intervention-label">
+                <span class="mini-key" [ngClass]="'series-' + item.slot"></span>
+                {{ item.status }}
+              </span>
+              <span class="intervention-count">{{ item.count }}</span>
+            </div>
+          </div>
+
+          <p class="intervention-note">
+            Human intervention is listed on its own so work that cannot continue automatically is
+            visible without reading the matrix below. A thread only carries one of these once it
+            has been opened at least once in the workflow screen.
+          </p>
+        </div>
+
+        <div class="dash-card sla-card">
+          <div class="card-head">
+            <div class="card-title">
+              <h2>SLA / Health</h2>
+              <span class="card-sub">Where the open queue stands against its 24-hour window</span>
+            </div>
+          </div>
+
+          <div class="sla-layout">
+            <div class="sla-bars">
+              <div class="sla-row" *ngFor="let bucket of summary.slaBuckets">
+                <span class="sla-name">{{ bucket.label }}</span>
+                <span class="sla-track">
+                  <span
+                    class="sla-fill"
+                    [style.width.%]="bucket.pct"
+                    [style.background]="slaFill(bucket.key)"
+                  ></span>
+                </span>
+                <strong class="sla-count" [class.danger]="bucket.key === 'breach' && bucket.count > 0">
+                  {{ bucket.count }}
+                </strong>
+              </div>
+            </div>
+
+            <!-- Under the bars rather than beside them: a 2.1rem number has
+                 nowhere to stand next to four bars in a third of the row. -->
+            <div class="sla-summary">
+              <div class="sla-percent" [class.danger]="!isSlaHealthy">{{ summary.slaPercent }}%</div>
+              <div class="sla-summary-meta">
+                <small>SLA Health</small>
+                <span class="health-pill" [class.at-risk]="!isSlaHealthy">
+                  <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  {{ isSlaHealthy ? 'Overall Healthy' : 'Needs attention' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- INTENT × WORKFLOW STAGE MATRIX                          -->
+      <!-- ====================================================== -->
+      <app-workflow-matrix
+        [groups]="summary.groups"
+        [activeDrill]="drill"
+        (drillRequested)="onDrillRequested($event)"
+      ></app-workflow-matrix>
+
+      <!-- ====================================================== -->
+      <!-- DRILL DOWN — opened by the matrix, closed from itself   -->
+      <!-- ====================================================== -->
+      <app-ticket-drilldown
+        [tickets]="openTickets"
+        [request]="drill"
+        (ticketOpened)="onTicketOpened($event)"
+        (closed)="closeDrill()"
+      ></app-ticket-drilldown>
+
+      <!-- ====================================================== -->
+      <!-- AI RECOMMENDATION FOR TICKETS (COMING SOON) - AT LAST   -->
+      <!-- ====================================================== -->
+      <section class="dash-card ai-recommendation-card">
+        <div class="ai-rec-inner">
+          <div class="ai-rec-icon-wrap" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+            </svg>
+          </div>
+
+          <div class="ai-rec-body">
+            <div class="ai-rec-header-row">
+              <div class="ai-rec-title-group">
+                <h2 class="ai-rec-title">
+                  <span class="highlight-gradient">AI Recommendations</span> for Ticket Information
+                </h2>
+                <span class="ai-rec-pill">
+                  <span class="ai-rec-dot"></span>
+                  Coming Soon
+                </span>
+                <span class="ai-rec-training-pill">
+                  <span class="sparkle-icon">✦</span> Deep Analysis In Progress
+                </span>
+              </div>
+            </div>
+
+            <p class="ai-rec-description">
+              Smart AI-driven recommendations, automated triage insights, and next-best actions for open tickets will be available soon<span class="ai-blink-cursor" aria-hidden="true">|</span>
+            </p>
+
+            <div class="ai-rec-tags">
+              <span class="ai-rec-tag">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                Smart Resolution Suggestions
+              </span>
+              <span class="ai-rec-tag">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                SLA Breach Prevention Insights
+              </span>
+              <span class="ai-rec-tag">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Automated Priority Triage
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </ng-container>
+  </main>
+</div>
+
+<!-- Ticket drawer. Always mounted; shows while drawerTicket is set. -->
+<app-ticket-drawer [ticket]="drawerTicket" (closed)="closeDrawer()"></app-ticket-drawer>

@@ -1,0 +1,121 @@
+/* ======================================================
+   RECIPIENT PILLS
+   One address row of a compose — To, Cc or Bcc. Styled to
+   read as a single field with chips inside it, matching
+   the plain inputs it sits beside in the alert compose.
+   ====================================================== */
+
+.recipient-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  cursor: text;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  /* The box owns the focus ring, not the bare <input> inside it — otherwise
+     the ring draws around the caret rather than around the field. */
+  &:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+  }
+}
+
+.recipient-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 4px 3px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.recipient-pill-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+}
+
+.recipient-pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipient-pill-remove {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #6366f1;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background: #4f46e5;
+    color: #ffffff;
+  }
+}
+
+/* Marked, never refused — the reviewer fixes it, the app does not drop it.
+   See isValid() in the component. */
+.recipient-pill.is-invalid {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+
+  .recipient-pill-dot {
+    background: #dc2626;
+  }
+
+  .recipient-pill-remove {
+    color: #dc2626;
+
+    &:hover {
+      background: #dc2626;
+      color: #ffffff;
+    }
+  }
+}
+
+/* Grows to fill whatever the pills left on the line, so there is always
+   somewhere obvious to type next. */
+.recipient-text {
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 2px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.5;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+}

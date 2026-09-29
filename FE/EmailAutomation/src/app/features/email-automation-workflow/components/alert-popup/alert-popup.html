@@ -1,0 +1,559 @@
+<!--
+  Same inert-backdrop rule as <app-thread-attachments>: only the × closes
+  this, so a stray click outside cannot lose it mid-read.
+-->
+<div class="alert-popup-backdrop" *ngIf="row">
+  <div class="alert-popup-dialog">
+
+    <div class="alert-popup-head">
+      <div class="alert-popup-title-group">
+        <span class="alert-popup-head-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </span>
+
+        <h4>Alert Response</h4>
+        <span class="alert-popup-thread" title="Thread ID">{{ row?.threadId }}</span>
+      </div>
+
+      <button class="alert-popup-close" type="button" (click)="onClose()" title="Close">×</button>
+    </div>
+
+    <!-- The scrolling part, and the element scrollToBottom() moves: the popup
+         opens at the end of the thread, not the start of it. -->
+    <div class="alert-popup-body" #popupBody>
+      <!-- The whole thread as one conversation, oldest first: every mail that
+           came in (main_email_messages) and every reply saved back
+           (PRIDE_EMAIL_REPLY), in the order they happened. The first entry is
+           always the customer's first mail. -->
+      <div class="alert-popup-section alert-history">
+        <span class="alert-popup-section-label alert-history-label">Email History</span>
+
+        <!-- Skeletons rather than a spinner, so the section keeps its height
+             and the compose below it does not jump when the list lands. -->
+        <div class="alert-history-skeletons" *ngIf="isLoadingHistory">
+          <div class="alert-history-skeleton" *ngFor="let placeholder of [1, 2]"></div>
+        </div>
+
+        <!-- Each half reports its own failure; whatever did load still shows. -->
+        <div class="alert-history-error" *ngIf="!isLoadingHistory && messagesError">
+          {{ messagesError }}
+        </div>
+
+        <div class="alert-history-error" *ngIf="!isLoadingHistory && repliesError">
+          {{ repliesError }}
+        </div>
+
+        <div class="alert-history-empty" *ngIf="!isLoadingHistory && history.length === 0">
+          No messages recorded on this thread yet.
+        </div>
+
+        <div class="alert-history-list" *ngIf="!isLoadingHistory && history.length">
+          <ng-container *ngFor="let entry of history">
+          <!-- A mail the customer sent. Subject, when it arrived and what it
+               said — nothing else from main_email_messages is shown. -->
+          <article class="alert-history-card is-received" *ngIf="entry.kind === 'received' && entry.message as message">
+            <header class="alert-history-card-head">
+              <span class="alert-history-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                </svg>
+              </span>
+
+              <span class="alert-history-subject" [title]="message.subject">
+                {{ message.subject || '(no subject)' }}
+              </span>
+
+              <time
+                class="alert-history-when"
+                *ngIf="!isFallbackMessage(message)"
+                [attr.datetime]="message.receivedTime"
+              >
+                {{ readableWhen(message.receivedTime) }}
+              </time>
+            </header>
+
+            <div class="alert-history-body">{{ message.messageText }}</div>
+
+            <footer class="alert-history-card-foot">
+              <span class="alert-history-direction">
+                <span class="alert-history-direction-dot" aria-hidden="true"></span>
+                Received
+              </span>
+            </footer>
+          </article>
+
+          <!-- A reply the CRM saved back on the thread. -->
+          <article class="alert-history-card" *ngIf="entry.kind === 'sent' && entry.reply as reply">
+            <!-- The glyph marks the direction at a glance: a paper plane went
+                 out, an inbox tray came in. -->
+            <header class="alert-history-card-head">
+              <span class="alert-history-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </span>
+
+              <span class="alert-history-subject" [title]="reply.subject">
+                {{ reply.subject || '(no subject)' }}
+              </span>
+
+              <time class="alert-history-when" [attr.datetime]="reply.createdOn">
+                {{ readableWhen(reply.createdOn) }}
+              </time>
+            </header>
+
+            <dl class="alert-history-addresses">
+              <div class="alert-history-address">
+                <dt>To</dt>
+                <dd>{{ reply.to }}</dd>
+              </div>
+              <div class="alert-history-address" *ngIf="reply.cc">
+                <dt>Cc</dt>
+                <dd>{{ reply.cc }}</dd>
+              </div>
+              <div class="alert-history-address" *ngIf="reply.bcc">
+                <dt>Bcc</dt>
+                <dd>{{ reply.bcc }}</dd>
+              </div>
+            </dl>
+
+            <div class="alert-history-body">{{ reply.body }}</div>
+
+            <!-- Two to a row, laid out like the Assigned To card the reviewer
+                 already knows: a tile saying what kind of thing it is, the name
+                 and size stacked beside it, and one button that saves it.
+
+                 The body and the save are separate targets. Clicking an image
+                 opens it in the pane below -- where the reply it belongs to
+                 stays on screen behind it -- and clicking anything else opens
+                 it in a tab, since the browser renders those better than this
+                 popup can. The arrow always means the same thing: put the file
+                 on my machine. -->
+            <div class="alert-history-files" *ngIf="reply.attachments?.length">
+              <div class="alert-history-file" *ngFor="let file of reply.attachments">
+                <button
+                  *ngIf="file.isImage; else fileLink"
+                  type="button"
+                  class="alert-history-file-main"
+                  (click)="openPreview(reply, file)"
+                  [title]="file.fileName + ' — click to preview'"
+                >
+                  <ng-container
+                    [ngTemplateOutlet]="fileChip"
+                    [ngTemplateOutletContext]="{ file: file, image: true }"
+                  ></ng-container>
+                </button>
+
+                <ng-template #fileLink>
+                  <a
+                    class="alert-history-file-main"
+                    [href]="attachmentUrl(reply, file)"
+                    target="_blank"
+                    rel="noopener"
+                    [title]="file.fileName + ' — click to open in a new tab'"
+                  >
+                    <ng-container
+                      [ngTemplateOutlet]="fileChip"
+                      [ngTemplateOutletContext]="{ file: file, image: false }"
+                    ></ng-container>
+                  </a>
+                </ng-template>
+
+                <button
+                  type="button"
+                  class="alert-history-file-save"
+                  (click)="download(reply, file)"
+                  [disabled]="isDownloading(reply, file)"
+                  [attr.aria-label]="'Download ' + file.fileName"
+                  [title]="isDownloading(reply, file) ? 'Downloading…' : 'Download ' + file.fileName"
+                >
+                  <!-- The spinner replaces the arrow in place, so a slow save on
+                       a 4 MB image does not read as a click that did nothing. -->
+                  <span class="alert-history-file-spinner" *ngIf="isDownloading(reply, file)" aria-hidden="true"></span>
+
+                  <svg *ngIf="!isDownloading(reply, file)" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- A save that did not happen. Under the files it belongs to, not
+                 at the top of the popup, so it is read where it was caused. -->
+            <div class="alert-history-file-error" *ngIf="downloadError">{{ downloadError }}</div>
+
+            <footer class="alert-history-card-foot">
+              <span class="alert-history-author">
+                <span class="alert-history-avatar" aria-hidden="true">
+                  {{ initialsFor(reply.createdBy) }}
+                </span>
+                <span>{{ reply.createdBy || 'CRM UI' }}</span>
+              </span>
+
+              <span class="alert-history-status">
+                <span class="alert-history-status-dot" aria-hidden="true"></span>
+                {{ reply.status }}
+              </span>
+            </footer>
+          </article>
+          </ng-container>
+        </div>
+
+        <!-- Under the last entry of the conversation, whichever side said it. -->
+        <ng-container
+          *ngIf="canRespond"
+          [ngTemplateOutlet]="respondBar"
+        ></ng-container>
+      </div>
+
+      <!-- The inline compose. Directly under the reply it answers — and the same
+           compose either way: empty when Respond opened it, filled in from the
+           step's template when Email Response did. -->
+      <div class="alert-compose" *ngIf="compose" #composeSection>
+        <div class="alert-compose-head">
+          <!-- On one line each: the chip and the step line are both sized to
+               their text, and a wrapped template adds whitespace to it. -->
+          <span class="alert-popup-section-label alert-compose-label">{{ composeTemplate ? 'Email Response' : 'Respond' }}</span>
+
+          <!-- Which step wrote it, so a drafted reply is never mistaken for
+               something the reviewer typed themselves. -->
+          <span class="alert-compose-step" *ngIf="composeTemplate">Drafted for {{ composeTemplate.stepTitle }}</span>
+
+          <span class="alert-compose-thread">{{ compose.threadId }}</span>
+        </div>
+
+        <!-- From is the template's alone. Respond has no such row: a reply typed
+             there goes out as the CRM, and there is nothing to choose. -->
+        <div class="alert-compose-field" *ngIf="composeTemplate">
+          <label class="alert-compose-field-label" for="alert-compose-from">From</label>
+
+          <input
+            id="alert-compose-from"
+            type="email"
+            [(ngModel)]="compose.from"
+            placeholder="Sending mailbox"
+          />
+        </div>
+
+        <!-- To keeps its own row; Cc and Bcc are opened from the two toggles
+             sitting on it, the way a mail client does it — closed by default
+             because most replies copy nobody. The count on a toggle is what
+             stops a collapsed row hiding an address from the reviewer. -->
+        <div class="alert-compose-field">
+          <div class="alert-compose-field-head">
+            <label class="alert-compose-field-label" for="alert-compose-to">To</label>
+
+            <div class="alert-compose-toggles">
+              <button
+                type="button"
+                class="alert-compose-toggle"
+                [class.is-open]="showCc"
+                [attr.aria-pressed]="showCc"
+                (click)="toggleCc()"
+              >
+                Cc<span class="alert-compose-toggle-count" *ngIf="ccCount">{{ ccCount }}</span>
+              </button>
+
+              <button
+                type="button"
+                class="alert-compose-toggle"
+                [class.is-open]="showBcc"
+                [attr.aria-pressed]="showBcc"
+                (click)="toggleBcc()"
+              >
+                Bcc<span class="alert-compose-toggle-count" *ngIf="bccCount">{{ bccCount }}</span>
+              </button>
+            </div>
+          </div>
+
+          <app-email-recipient-input
+            inputId="alert-compose-to"
+            [(recipients)]="compose.to"
+            placeholder="Customer email address"
+          ></app-email-recipient-input>
+        </div>
+
+        <div class="alert-compose-field" *ngIf="showCc">
+          <label class="alert-compose-field-label" for="alert-compose-cc">Cc</label>
+          <app-email-recipient-input
+            inputId="alert-compose-cc"
+            [(recipients)]="compose.cc"
+            placeholder="Add an address and press Enter"
+          ></app-email-recipient-input>
+        </div>
+
+        <div class="alert-compose-field" *ngIf="showBcc">
+          <label class="alert-compose-field-label" for="alert-compose-bcc">Bcc</label>
+          <app-email-recipient-input
+            inputId="alert-compose-bcc"
+            [(recipients)]="compose.bcc"
+            placeholder="Add an address and press Enter"
+          ></app-email-recipient-input>
+        </div>
+
+        <!-- Only a drafted reply has one, and it is what the customer reads it
+             as: the server derives 'Re: …' for the ones written without it. -->
+        <div class="alert-compose-field" *ngIf="composeTemplate">
+          <label class="alert-compose-field-label" for="alert-compose-subject">Subject</label>
+
+          <input
+            id="alert-compose-subject"
+            type="text"
+            [(ngModel)]="compose.subject"
+          />
+        </div>
+
+        <!--
+          Asked above the body because the answer rewrites a line of it: yes
+          tells the customer the ticket is closed, no says it is still open.
+          Nothing is filed against the ticket here — the answer is carried out
+          when the reply is sent, so a discarded compose changes nothing.
+        -->
+        <div
+          class="alert-compose-ticket"
+          *ngIf="composeTemplate?.canCloseTicket"
+          [class.is-answered]="ticketChoice"
+          [class.needs-answer]="needsTicketChoice"
+        >
+          <div class="alert-compose-ticket-ask">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"></path>
+              <line x1="13" y1="7" x2="13" y2="17"></line>
+            </svg>
+
+            <span class="alert-compose-ticket-label">Close this ticket?</span>
+
+            <!-- Says what each answer does, since one of them is not undoable -->
+            <span class="alert-compose-ticket-hint">
+              {{
+                ticketChoice === 'yes'
+                  ? 'Will be closed when you send — the reply says so too.'
+                  : ticketChoice === 'no'
+                    ? 'Will stay open — the reply says so too.'
+                    : needsTicketChoice
+                    ? 'Required — pick one before sending.'
+                    : 'Yes closes it on send; No leaves it open.'
+              }}
+            </span>
+          </div>
+
+          <div class="alert-compose-ticket-choice">
+            <button
+              type="button"
+              class="alert-compose-ticket-btn yes"
+              [class.is-chosen]="ticketChoice === 'yes'"
+              (click)="onTicketChoice(true)"
+            >
+              Yes
+            </button>
+
+            <button
+              type="button"
+              class="alert-compose-ticket-btn no"
+              [class.is-chosen]="ticketChoice === 'no'"
+              (click)="onTicketChoice(false)"
+            >
+              No
+            </button>
+          </div>
+        </div>
+
+        <label class="alert-compose-field alert-compose-field-body">
+          <span class="alert-compose-field-label">Body</span>
+
+          <!-- Taller for a drafted reply: its template has already written
+               several paragraphs, and a box that shows two of them makes the
+               reviewer scroll to read what they are about to send. -->
+          <textarea
+            [rows]="composeTemplate ? 16 : 10"
+            [(ngModel)]="compose.body"
+            placeholder="Write your reply…"
+          ></textarea>
+        </label>
+
+        <!-- Files ride along with the reply as base64 in the same call, so
+             there is nothing to upload separately and nothing to leave behind
+             if the save fails. -->
+        <div class="alert-compose-attachments">
+          <div class="alert-compose-attachments-head">
+            <span class="alert-compose-field-label">Attachments</span>
+
+            <label class="alert-compose-attach-btn">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+              </svg>
+              <span>Add files</span>
+              <input type="file" multiple (change)="onFilesPicked($event)" />
+            </label>
+          </div>
+
+          <div class="alert-compose-attachment-list" *ngIf="compose.attachments.length; else noFiles">
+            <span class="alert-compose-attachment" *ngFor="let file of compose.attachments; let i = index">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <span class="alert-compose-attachment-name" [title]="file.fileName">{{ file.fileName }}</span>
+              <span class="alert-compose-attachment-size">{{ readableSize(file.sizeBytes) }}</span>
+              <button
+                type="button"
+                class="alert-compose-attachment-remove"
+                (click)="removeAttachment(i)"
+                [attr.aria-label]="'Remove ' + file.fileName"
+                title="Remove"
+              >×</button>
+            </span>
+          </div>
+
+          <ng-template #noFiles>
+            <span class="alert-compose-attachments-empty">No files attached</span>
+          </ng-template>
+        </div>
+
+        <!-- A failed save, or a file that would not fit. Kept beside the
+             buttons because that is where the reviewer is looking when it
+             happens. -->
+        <div class="alert-compose-error" *ngIf="composeError">{{ composeError }}</div>
+
+        <div class="alert-compose-actions">
+          <button type="button" class="alert-compose-btn ghost" (click)="onDiscard()" [disabled]="isSaving">
+            Discard
+          </button>
+
+          <button type="button" class="alert-compose-btn primary" (click)="onSend()" [disabled]="isSaving">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            <span>{{ isSaving ? 'Saving…' : 'Send' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Over the popup rather than in a window of its own: the reply the image
+         was attached to is the context it is read in, and a new tab throws that
+         away. Its own backdrop is clickable to dismiss -- unlike the popup's,
+         since nothing is being written in here to lose. -->
+    <div class="alert-preview" *ngIf="preview" (click)="closePreview()">
+      <div class="alert-preview-panel" (click)="$event.stopPropagation()">
+        <div class="alert-preview-head">
+          <span class="alert-preview-name" [title]="preview.file.fileName">
+            {{ preview.file.fileName }}
+          </span>
+          <span class="alert-preview-size">{{ readableSize(preview.file.sizeBytes) }}</span>
+
+          <!-- The same save the card behind this one offers, repeated here
+               because this is where a reviewer decides they want the file: they
+               have just looked at it, and closing the preview to find the arrow
+               again is a step that answers nothing. Shares download() with the
+               card, so one spinner covers both and neither can fetch twice. -->
+          <button
+            type="button"
+            class="alert-preview-save"
+            (click)="download(preview.reply, preview.file)"
+            [disabled]="isDownloading(preview.reply, preview.file)"
+          >
+            <span class="alert-preview-spinner" *ngIf="isDownloading(preview.reply, preview.file)" aria-hidden="true"></span>
+
+            <svg *ngIf="!isDownloading(preview.reply, preview.file)" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+
+            <span>{{ isDownloading(preview.reply, preview.file) ? 'Saving…' : 'Download' }}</span>
+          </button>
+
+          <!-- The old behaviour, kept as a deliberate choice rather than the
+               only one: the full-size file, in a tab, for printing or for
+               handing its URL to something else. -->
+          <a
+            class="alert-preview-open"
+            [href]="previewUrl()"
+            target="_blank"
+            rel="noopener"
+            title="Open the full-size file in a new tab"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            <span>Open</span>
+          </a>
+
+          <button
+            type="button"
+            class="alert-preview-close"
+            (click)="closePreview()"
+            title="Close preview (Esc)"
+          >×</button>
+        </div>
+
+        <!-- A failed save while the preview is open. The card's own message is
+             behind this panel and cannot be read from here, so it is repeated
+             where the click that caused it was made. -->
+        <div class="alert-preview-error" *ngIf="downloadError">{{ downloadError }}</div>
+
+        <div class="alert-preview-stage">
+          <img [src]="previewUrl()" [alt]="preview.file.fileName" />
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!--
+  The Respond button itself. Written once and rendered into whichever of the two
+  slots above applies, so the two placements can never drift apart in wording,
+  icon or behaviour.
+-->
+<ng-template #respondBar>
+  <div class="alert-respond-bar">
+    <button type="button" class="alert-respond-btn" (click)="onRespond()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 17 4 12 9 7"></polyline>
+        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+      </svg>
+      <span>{{ replies.length ? 'Respond again' : 'Respond' }}</span>
+    </button>
+  </div>
+</ng-template>
+
+<!--
+  The inside of a saved reply's file card. One definition for both outlets, so
+  the image button and the open-in-a-tab link cannot drift into looking like two
+  different kinds of thing -- only the tile's glyph says which is which.
+-->
+<ng-template #fileChip let-file="file" let-image="image">
+  <span class="alert-history-file-icon" [class.is-image]="image" aria-hidden="true">
+    <svg *ngIf="image; else fileGlyph" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+      <polyline points="21 15 16 10 5 21"></polyline>
+    </svg>
+
+    <ng-template #fileGlyph>
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+      </svg>
+    </ng-template>
+  </span>
+
+  <!-- Name over size, the way the Assigned To card puts a name over its
+       address: the name is what is being looked for, the size is context. -->
+  <span class="alert-history-file-details">
+    <span class="alert-history-file-name">{{ file.fileName }}</span>
+    <span class="alert-history-file-size">{{ readableSize(file.sizeBytes) }}</span>
+  </span>
+</ng-template>

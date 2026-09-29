@@ -1,0 +1,141 @@
+# =====================================================================
+#  Angular Bank Loan - Email Automation
+#  Root .gitignore covering:
+#    FE/  -> Angular front-end   (FE/EmailAutomation)
+#    BE/  -> ASP.NET MVC / Web API back-end (BE/EmailAutomation)
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+#  FRONT-END (Angular)
+# ---------------------------------------------------------------------
+
+# Dependencies (restore with: npm install)
+node_modules/
+
+# Build output (generate with: ng build)
+FE/**/dist/
+FE/**/tmp/
+FE/**/out-tsc/
+FE/**/bazel-out/
+
+# Angular CLI cache
+.angular/
+
+# Test / coverage output
+FE/**/coverage/
+FE/**/testem.log
+FE/**/libpeerconnection.log
+FE/**/__screenshots__/
+FE/**/typings/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.sass-cache/
+connect.lock
+
+
+# ---------------------------------------------------------------------
+#  BACK-END (ASP.NET / Visual Studio)
+# ---------------------------------------------------------------------
+
+# Build output (generate with: Build / Publish in Visual Studio)
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet packages (restore with: NuGet package restore)
+[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Visual Studio cache / user-specific files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Publish profiles & publish output
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+*.publishproj
+publish/
+PublishScripts/
+
+# Web Deploy / packaging
+*.[Cc]ache
+!?*.[Cc]ache/
+*.zip
+
+# Roslyn / compiler temp
+*.pdb
+*.ilk
+*.obj
+*.tmp
+*.tlog
+*.log
+
+# Runtime-generated data files (not source code)
+BE/**/DailyEmail/*
+!BE/**/DailyEmail/.gitkeep
+
+
+# ---------------------------------------------------------------------
+#  SECRETS / ENVIRONMENT
+# ---------------------------------------------------------------------
+.env
+.env.*
+# Web.config holds DB connection strings / credentials - keep it local only
+BE/**/Web.config
+!BE/**/Views/Web.config
+*.pfx
+*.publishsettings
+appsettings.*.local.json
+
+
+# ---------------------------------------------------------------------
+#  EDITORS & TOOLS
+# ---------------------------------------------------------------------
+
+# VS Code (keep shared workspace settings)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+
+# JetBrains / others
+.idea/
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+
+# Claude Code local settings
+.claude/
+
+
+# ---------------------------------------------------------------------
+#  OS FILES
+# ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

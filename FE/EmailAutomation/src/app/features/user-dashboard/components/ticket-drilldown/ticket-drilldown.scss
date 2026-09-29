@@ -1,0 +1,266 @@
+/* ======================================================
+   TICKET DRILL DOWN
+   The rows behind a number in the matrix. Opens beneath
+   it, carrying the filters that were clicked.
+   ====================================================== */
+
+:host {
+  display: block;
+}
+
+.drilldown {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.drill-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, #f4f7ff 0%, #ffffff 100%);
+  border-bottom: 1px solid #e5e7eb;
+
+  .drill-title {
+    min-width: 0;
+
+    h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.2px;
+    }
+
+    small {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+  }
+
+  .drill-summary {
+    margin-left: auto;
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+
+    .summary-chip {
+      padding: 5px 10px;
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: #475569;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 15px;
+      white-space: nowrap;
+
+      &.blue {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #dbeafe;
+      }
+
+      &.red {
+        color: #b91c1c;
+        background: #fff1f2;
+        border-color: #fecdd3;
+      }
+    }
+  }
+
+  .drill-close {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    color: #64748b;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 1px;
+    }
+  }
+}
+
+/* ── Filter row ─────────────────────────────────────── */
+.drill-tools {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.5fr) repeat(3, minmax(130px, 0.7fr)) auto;
+  gap: 9px;
+  padding: 11px 16px;
+  border-bottom: 1px solid #eef2f7;
+  background: #fbfcff;
+
+  input,
+  select {
+    height: 33px;
+    padding: 0 10px;
+    font: inherit;
+    font-size: 0.72rem;
+    color: #334155;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    &:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 0;
+    }
+  }
+
+  select {
+    cursor: pointer;
+  }
+
+  .clear-filter {
+    height: 33px;
+    padding: 0 14px;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+  }
+}
+
+/* ── Table ──────────────────────────────────────────── */
+.detail-table-wrap {
+  overflow: auto;
+  max-height: 440px;
+}
+
+.detail-table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px;
+    text-align: left;
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #64748b;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 10px;
+    font-size: 0.72rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
+  }
+
+  tbody tr:hover td {
+    background: #fbfdff;
+  }
+
+  .col-email {
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticket-link {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-weight: 800;
+    color: #4338ca;
+  }
+
+  .sla-good,
+  .sla-bad {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    border-radius: 10px;
+  }
+
+  .sla-good {
+    color: #15803d;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+  }
+
+  .sla-bad {
+    color: #b91c1c;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+  }
+
+  .row-action {
+    padding: 5px 10px;
+    font: inherit;
+    font-size: 0.64rem;
+    font-weight: 800;
+    color: #4338ca;
+    background: #ffffff;
+    border: 1px solid #c7d2fe;
+    border-radius: 7px;
+    cursor: pointer;
+
+    &:hover {
+      background: #eef2ff;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 1px;
+    }
+  }
+}
+
+.empty-state {
+  padding: 26px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+@media (max-width: 1100px) {
+  .drill-tools {
+    grid-template-columns: 1fr 1fr 1fr;
+
+    .wide { grid-column: 1 / -1; }
+  }
+}
+
+@media (max-width: 760px) {
+  .drill-tools {
+    grid-template-columns: 1fr;
+
+    .wide { grid-column: auto; }
+  }
+}

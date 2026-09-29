@@ -1,0 +1,19 @@
+/* ======================================================
+   CRM WORKSPACE SHELL
+   Owns the side bar and the slot beside it. All page
+   background and layout belongs to whichever screen is
+   mounted, which fills the slot's width.
+   ====================================================== */
+
+:host {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.workspace-screen {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+}

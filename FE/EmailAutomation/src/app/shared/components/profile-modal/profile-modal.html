@@ -1,0 +1,50 @@
+<!--
+  Same inert-backdrop rule as <app-alert-popup>: only the × closes this, so a
+  stray click outside cannot lose it mid-read.
+-->
+<div class="profile-modal-backdrop">
+  <div class="profile-modal-dialog">
+
+    <div class="profile-modal-head">
+      <div class="profile-modal-title-group">
+        <span class="profile-modal-head-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"></path>
+          </svg>
+        </span>
+        <h4>My Profile</h4>
+      </div>
+
+      <button class="profile-modal-close" type="button" (click)="onClose()" title="Close">&times;</button>
+    </div>
+
+    <div class="profile-modal-body">
+      <div class="profile-avatar">{{ (user?.employeeName || user?.username || '?').charAt(0).toUpperCase() }}</div>
+
+      <div class="profile-fields">
+        <div class="profile-field">
+          <span class="profile-field-label">User Name</span>
+          <span class="profile-field-value">{{ user?.employeeName || user?.username || '—' }}</span>
+        </div>
+
+        <div class="profile-field">
+          <span class="profile-field-label">Username</span>
+          <span class="profile-field-value">{{ user?.username || '—' }}</span>
+        </div>
+
+        <div class="profile-field">
+          <span class="profile-field-label">Email</span>
+          <span class="profile-field-value">{{ user?.email || '—' }}</span>
+        </div>
+
+        <div class="profile-field">
+          <span class="profile-field-label">Role</span>
+          <span class="profile-field-value">
+            <span class="profile-role-pill">{{ roleLabel || '—' }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

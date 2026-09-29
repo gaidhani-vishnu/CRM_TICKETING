@@ -1,0 +1,71 @@
+<div class="edit-backdrop" *ngIf="request" (click)="onCancel()">
+
+  <!-- Click-through on the backdrop closes; clicks inside must not. -->
+  <div class="edit-dialog" (click)="$event.stopPropagation()">
+
+    <div class="edit-head">
+      <h4>{{ request.title }}</h4>
+      <button class="edit-close" type="button" (click)="onCancel()" [disabled]="isSaving">×</button>
+    </div>
+
+    <p class="edit-description">{{ request.description }}</p>
+
+    <div class="edit-body">
+      <div class="edit-group" *ngFor="let group of groups; let i = index">
+        <div class="edit-group-title" *ngIf="group.title">
+          <span class="edit-group-name">
+            <!-- Its place in the list, so "the second one" is a thing the reviewer
+                 can point at when several payments are being corrected at once. -->
+            <span class="edit-group-index" *ngIf="groups.length > 1">{{ i + 1 }}</span>
+            {{ group.title }}
+          </span>
+          <span class="edit-group-missing" *ngIf="group.missing">needs {{ group.missing }}</span>
+        </div>
+
+        <!-- Three across rather than one per line: a payment is then one band of
+             the dialog you can read at a glance, instead of a column you scroll. -->
+        <div class="edit-fields">
+          <label class="edit-field" *ngFor="let field of group.fields">
+            <span class="edit-label">
+              {{ field.label }}
+              <span class="edit-required" *ngIf="field.required">*</span>
+            </span>
+
+            <!-- A value that has to be one of a known set is picked, not typed. -->
+            <select
+              *ngIf="field.options?.length"
+              [(ngModel)]="field.value"
+              [class.is-blank]="isBlank(field)"
+              [disabled]="isSaving"
+            >
+              <option *ngFor="let option of field.options" [value]="option">{{ option }}</option>
+            </select>
+
+            <input
+              *ngIf="!field.options?.length"
+              type="text"
+              [(ngModel)]="field.value"
+              [class.is-blank]="isBlank(field)"
+              [placeholder]="field.placeholder || ''"
+              [disabled]="isSaving"
+            />
+
+            <span class="edit-hint" *ngIf="field.hint">{{ field.hint }}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="edit-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="edit-actions">
+      <button class="edit-btn ghost" type="button" (click)="onCancel()" [disabled]="isSaving">
+        Cancel
+      </button>
+      <button class="edit-btn primary" type="button" (click)="onSave()" [disabled]="!canSave()">
+        {{ isSaving ? 'Saving…' : request.saveLabel }}
+      </button>
+    </div>
+
+  </div>
+</div>

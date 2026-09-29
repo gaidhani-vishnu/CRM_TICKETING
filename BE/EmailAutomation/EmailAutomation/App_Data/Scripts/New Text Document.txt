@@ -1,0 +1,11 @@
+ALTER TABLE [dbo].[PRIDE_TICKET_ACJNOWLEDGEMENT]
+ADD [ReceivedType] NVARCHAR(50) NOT NULL
+    CONSTRAINT DF_PRIDE_TICKET_ACJNOWLEDGEMENT_ReceivedType
+    DEFAULT ('Email');
+
+----------------------------------------------------------------
+
+ALTER TABLE [dbo].[PRIDE_TICKET_ACJNOWLEDGEMENT]
+ADD ChkReadChkRead BIT
+    CONSTRAINT DF_PRIDE_TICKET_ACJNOWLEDGEMENT_ChkRead
+    DEFAULT (0);

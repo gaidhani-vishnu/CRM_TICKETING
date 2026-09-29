@@ -1,0 +1,446 @@
+/* ======================================================
+   INTENT × WORKFLOW STAGE MATRIX
+   Every number is a control, so every number carries the
+   affordance of one — but only where there is something
+   behind it to open.
+   ====================================================== */
+
+:host {
+  display: block;
+}
+
+.dash-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+
+  .card-title h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.2px;
+  }
+
+  .card-sub {
+    display: block;
+    margin-top: 3px;
+    max-width: 640px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #64748b;
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toggle-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: #1e293b;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    svg {
+      color: #64748b;
+    }
+  }
+}
+
+/* The table scrolls inside its own box, never the page — both ways.
+   Horizontally because the six stage columns need more width than a third-
+   width viewport gives them, and vertically because the number of rows is
+   the data's to decide: every sub-intent of every intent gets a line, so a
+   busy queue would otherwise push the drill-down off the bottom of the page. */
+.table-wrap {
+  overflow: auto;
+  max-height: 420px;
+}
+
+.matrix-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+
+  th {
+    /* Held against the top of .table-wrap, so the stage a column counts stays
+       readable however far down the matrix you are. */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    padding: 10px 9px;
+    text-align: left;
+    font-size: 0.62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.45px;
+    color: #64748b;
+    background: #f8fafc;
+    /* border-collapse drops a sticky cell's own border once it detaches, so
+       the divider is painted as an inset shadow instead. */
+    box-shadow: inset 0 -1px 0 #e5e7eb;
+    white-space: nowrap;
+
+    &.col-hierarchy { width: 380px; }
+    &.col-total { width: 84px; }
+  }
+
+  .stage-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    .stage-index {
+      display: grid;
+      place-items: center;
+      width: 15px;
+      height: 15px;
+      font-size: 0.58rem;
+      font-weight: 800;
+      color: #6366f1;
+      background: #eef2ff;
+      border-radius: 50%;
+    }
+  }
+
+  td {
+    padding: 9px;
+    font-size: 0.76rem;
+    color: #334155;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+/* ── Parent Intent Row (Summary Level) ───────────────── */
+.intent-row {
+  background: #f8fafc;
+  border-left: 3.5px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &.series-1 { border-left-color: #2a78d6; }
+  &.series-2 { border-left-color: #eb6834; }
+  &.series-3 { border-left-color: #1baf7a; }
+  &.series-0 { border-left-color: #94a3b8; }
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  &.expanded {
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+
+    .tree-toggle-btn {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #2563eb;
+    }
+  }
+
+  &.active {
+    background: #eff6ff;
+  }
+
+  td {
+    border-bottom: 1px solid #e2e8f0;
+  }
+}
+
+.hierarchy-cell {
+  vertical-align: middle;
+
+  &.intent-cell {
+    cursor: pointer;
+  }
+}
+
+.intent-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.tree-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #93c5fd;
+    transform: scale(1.05);
+  }
+
+  .toggle-chevron {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
+
+    &.rotated {
+      transform: rotate(90deg);
+      color: #2563eb;
+    }
+  }
+}
+
+.intent-info-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+
+  .intent-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.3;
+    white-space: nowrap;
+    transition: color 0.12s ease;
+
+    &:hover {
+      color: #2563eb;
+    }
+  }
+
+  .intent-tag {
+    display: inline-flex;
+    padding: 2px 7px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    border-radius: 6px;
+    color: #ffffff;
+    white-space: nowrap;
+
+    /* Donut agreed color series */
+    &.series-1 { background: #2a78d6; }
+    &.series-2 { background: #eb6834; }
+    &.series-3 { background: #1baf7a; }
+    &.series-0 { background: #94a3b8; }
+  }
+
+  .subintent-count-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+    border-radius: 10px;
+    white-space: nowrap;
+    letter-spacing: 0.1px;
+    transition: background 0.12s ease;
+
+    &:hover {
+      background: #cbd5e1;
+      color: #1e293b;
+    }
+  }
+}
+
+.drill-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: auto;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+}
+
+.parent-stage-link {
+  font-size: 0.8rem;
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.parent-total-cell {
+  background: #f4f7fb;
+}
+
+/* ── Child Sub-Intent Rows (Nested Level) ─────────────── */
+.child-subintent-row {
+  background: #ffffff;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  td {
+    padding: 7px 9px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  &.last-child td {
+    border-bottom: 1px solid #e2e8f0;
+  }
+}
+
+.child-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  height: 100%;
+}
+
+.tree-rail {
+  position: relative;
+  width: 20px;
+  height: 28px;
+  min-width: 20px;
+
+  .rail-v {
+    position: absolute;
+    left: 8px;
+    top: -14px;
+    bottom: 0;
+    width: 1.5px;
+    background: #cbd5e1;
+  }
+
+  .rail-h {
+    position: absolute;
+    left: 8px;
+    top: 14px;
+    width: 12px;
+    height: 1.5px;
+    background: #cbd5e1;
+  }
+
+  &.corner .rail-v {
+    bottom: 14px; /* Stop at elbow bend for the last child */
+  }
+}
+
+.subintent-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.subintent-name {
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── The count buttons ───────────────────────────────── */
+.stage-link {
+  min-width: 42px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #dbeafe;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 1px;
+  }
+
+  &.active {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #93c5fd;
+  }
+
+  /* An empty cell is not a control — it reads as a value only. */
+  &.zero,
+  &:disabled {
+    color: #cbd5e1;
+    cursor: default;
+  }
+
+  &.total {
+    color: #0b1324;
+    font-weight: 850;
+  }
+
+  .overdue-count {
+    margin-left: 3px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    color: #dc2626;
+  }
+}
+
+.total-cell {
+  background: #fbfcff;
+  border-left: 1px solid #eef2f7;
+}

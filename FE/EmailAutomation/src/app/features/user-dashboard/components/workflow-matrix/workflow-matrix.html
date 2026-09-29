@@ -1,0 +1,195 @@
+<section class="dash-card matrix-card">
+  <div class="card-head">
+    <div class="card-title">
+      <h2>Intent Wise Work Flow Count</h2>
+      <span class="card-sub">
+        Click an intent, or any single count, to drill down to the tickets behind it.
+        A figure in brackets is how many of those are overdue.
+      </span>
+    </div>
+
+    <div class="card-actions" *ngIf="groups.length > 0">
+      <button
+        type="button"
+        class="toggle-all-btn"
+        (click)="toggleAll()"
+        [title]="allExpanded() ? 'Collapse all intents' : 'Expand all intents'"
+      >
+        <svg *ngIf="!allExpanded()" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="7 13 12 18 17 13"></polyline>
+          <polyline points="7 6 12 11 17 6"></polyline>
+        </svg>
+        <svg *ngIf="allExpanded()" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="17 11 12 6 7 11"></polyline>
+          <polyline points="17 18 12 13 7 18"></polyline>
+        </svg>
+        {{ allExpanded() ? 'Collapse All' : 'Expand All' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th class="col-hierarchy">Intent / Sub-Intent</th>
+          <th *ngFor="let stage of stages; let i = index; trackBy: trackByStageColumn">
+            <span class="stage-head">
+              <span class="stage-index">{{ i + 1 }}</span>
+              {{ stage.label }}
+            </span>
+          </th>
+          <th class="col-total">Total</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <ng-container *ngFor="let group of groups; trackBy: trackByIntent">
+          <!-- PARENT ROW: INTENT LEVEL SUMMARY (FIRST TIME SHOW INTENT WISE COUNT) -->
+          <tr
+            class="intent-row"
+            [ngClass]="'series-' + group.slot"
+            [class.expanded]="isExpanded(group)"
+            [class.active]="isIntentActive(group)"
+          >
+            <!-- Unified Hierarchy Column for Parent Intent -->
+            <td class="hierarchy-cell intent-cell" (click)="toggleIntent(group, $event)">
+              <div class="intent-row-inner">
+                <button
+                  type="button"
+                  class="tree-toggle-btn"
+                  (click)="toggleIntent(group, $event)"
+                  [attr.aria-expanded]="isExpanded(group)"
+                  [title]="isExpanded(group) ? 'Collapse ' + group.intent : 'Expand ' + group.intent"
+                >
+                  <svg
+                    class="toggle-chevron"
+                    [class.rotated]="isExpanded(group)"
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+
+                <div class="intent-info-cluster">
+                  <span class="intent-name" [title]="group.intent">{{ group.intent }}</span>
+
+                  <span class="intent-tag" [ngClass]="'series-' + group.slot">
+                    {{ group.openCount }} Open
+                  </span>
+
+                  <span class="subintent-count-chip">
+                    {{ group.rows.length }} Sub-Intents
+                  </span>
+                </div>
+
+                <button
+                  class="drill-hint"
+                  type="button"
+                  (click)="onIntentDrillClick(group, $event)"
+                  title="View ticket details for {{ group.intent }}"
+                >
+                  <span>View tickets</span>
+                  <svg viewBox="0 0 24 24" width="9" height="9" stroke="currentColor" stroke-width="3" fill="none">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </td>
+
+            <!-- Intent-level Stage Count Cells -->
+            <td *ngFor="let cell of group.cells; trackBy: trackByStage">
+              <button
+                class="stage-link parent-stage-link"
+                type="button"
+                (click)="onGroupCellClick(group, cell, $event)"
+                [class.active]="isGroupCellActive(group, cell)"
+                [class.zero]="cell.total === 0"
+                [disabled]="cell.total === 0"
+                [title]="cell.total + ' ticket(s), ' + cell.overdue + ' overdue in ' + group.intent"
+              >
+                {{ cell.total }}
+                <span class="overdue-count" *ngIf="cell.overdue > 0">({{ cell.overdue }})</span>
+              </button>
+            </td>
+
+            <!-- Intent-level Total Cell -->
+            <td class="total-cell parent-total-cell">
+              <button
+                class="stage-link total parent-total-link"
+                type="button"
+                (click)="onGroupCellClick(group, group.total, $event)"
+                [class.active]="isGroupCellActive(group, group.total)"
+                [disabled]="group.total.total === 0"
+                [title]="group.total.total + ' ticket(s), ' + group.total.overdue + ' overdue in ' + group.intent"
+              >
+                {{ group.total.total }}
+                <span class="overdue-count" *ngIf="group.total.overdue > 0">({{ group.total.overdue }})</span>
+              </button>
+            </td>
+          </tr>
+
+          <!-- CHILD ROWS: SUB-INTENT LEVEL (SHOWN WHEN INTENT IS CLICKED / EXPANDED) -->
+          <ng-container *ngIf="isExpanded(group)">
+            <tr
+              *ngFor="let row of group.rows; let last = last; trackBy: trackBySubIntent"
+              class="child-subintent-row"
+              [class.last-child]="last"
+            >
+              <!-- Unified Hierarchy Column for Child Sub-Intent -->
+              <td class="hierarchy-cell child-cell">
+                <div class="child-row-inner">
+                  <!-- Continuous Tree Guide Rail -->
+                  <div class="tree-rail" aria-hidden="true" [class.corner]="last">
+                    <span class="rail-v"></span>
+                    <span class="rail-h"></span>
+                  </div>
+
+                  <span class="subintent-dot" aria-hidden="true"></span>
+                  <span class="subintent-name" [title]="row.subIntent">{{ row.subIntent }}</span>
+                </div>
+              </td>
+
+              <!-- Sub-Intent Stage Cells -->
+              <td *ngFor="let cell of row.cells; trackBy: trackByStage">
+                <button
+                  class="stage-link"
+                  type="button"
+                  (click)="onCellClick(row, cell)"
+                  [class.active]="isActive(row, cell)"
+                  [class.zero]="cell.total === 0"
+                  [disabled]="cell.total === 0"
+                  [title]="cell.total + ' ticket(s), ' + cell.overdue + ' overdue'"
+                >
+                  {{ cell.total }}
+                  <span class="overdue-count" *ngIf="cell.overdue > 0">({{ cell.overdue }})</span>
+                </button>
+              </td>
+
+              <!-- Sub-Intent Total Cell -->
+              <td class="total-cell">
+                <button
+                  class="stage-link total"
+                  type="button"
+                  (click)="onCellClick(row, row.total)"
+                  [class.active]="isActive(row, row.total)"
+                  [disabled]="row.total.total === 0"
+                >
+                  {{ row.total.total }}
+                  <span class="overdue-count" *ngIf="row.total.overdue > 0">({{ row.total.overdue }})</span>
+                </button>
+              </td>
+            </tr>
+          </ng-container>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+</section>

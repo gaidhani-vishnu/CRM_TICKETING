@@ -1,0 +1,1431 @@
+﻿/* Surface and heading copied from .ai-insights-card in the parent panel — this
+   card sits in the same stack, so it must not read as a different kind of
+   section. It cannot inherit those rules: they are scoped to the parent
+   component and this is a separate, encapsulated component. */
+.payment-details-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  /* Collapsed: the header row is the whole card, so the flex gap below it
+     would otherwise leave a strip of dead space. */
+  &:not(.is-expanded) {
+    gap: 0;
+  }
+
+  .card-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    &.clickable-header {
+      cursor: pointer;
+      user-select: none;
+
+      /* Chevron only. Targeting every .icon-btn here would out-specify
+         .show-more-btn:hover on `color` — that button would end up with a
+         violet icon on its violet hover fill, i.e. invisible. */
+      &:hover .header-right-action {
+        border-color: #c7d2fe;
+        color: #4f46e5;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Same green check square the parent panel's cards use for a finished step.
+     Kept in step with .step-done-check in email-automation-workflow.scss. */
+  .step-done-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #15803d;
+    animation: stepCheckPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* The step the pipeline is on, breathing so the eye lands on it. Matches
+     .is-active-step in the parent panel. */
+  &.is-active-step {
+    /* Full indigo, not the tint: the card is opened by the app rather than by
+       the reviewer's own click, so it has to say "this one" on sight. */
+    border-color: #6366f1;
+    animation: stepFocusPulse 1.9s ease-in-out infinite;
+  }
+}
+
+@keyframes stepCheckPop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Kept in step with the same animation in email-automation-workflow.scss: the
+   ring never fades to nothing, so the active card is marked out at every point
+   of the cycle rather than only on the beat. */
+@keyframes stepFocusPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(99, 102, 241, 0.45),
+      0 4px 14px -8px rgba(79, 70, 229, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(99, 102, 241, 0.28),
+      0 12px 28px -12px rgba(79, 70, 229, 0.75);
+  }
+}
+
+/* Nobody should be made to watch a card breathe if they have asked the system
+   not to animate. The border colour still marks the active step. */
+@media (prefers-reduced-motion: reduce) {
+  .payment-details-card.is-active-step {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.45);
+  }
+
+  .payment-details-card .step-done-check {
+    animation: none;
+  }
+}
+
+.payment-details-card {
+
+  .card-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #312e81;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    svg {
+      stroke: #6366f1;
+    }
+
+    /*
+      A fixed column for the title, so the chips beside it start at the same x as
+      those on the Ticket, Subject, Customer and Project cards above. Those are
+      the parent component's, laid out the same way — kept in step with
+      .card-title-text in email-automation-workflow.scss, and wide enough for the
+      longest of the six titles, "Bank Reconciliation".
+    */
+    .card-title-text {
+      flex-shrink: 0;
+      white-space: nowrap;
+      min-width: 138px;
+    }
+
+    /*
+      Every chip in this header is built to the same shape as the ones on the
+      cards above — 24px tall, 11px of side padding, fully rounded — so the two
+      components read as one stack rather than as a full-size row followed by a
+      row of small print. Kept in step with .hp-item in
+      email-automation-workflow.scss.
+    */
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      /* Matches the 6px the parent's .header-preview sets off its own chips by,
+         so the first chip lands on the same x across every card. */
+      margin-left: 6px;
+      min-height: 24px;
+      padding: 0 11px;
+      white-space: nowrap;
+      background: #e0e7ff;
+      color: #4338ca;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border: 1px solid #c7d2fe;
+    }
+
+    /* Reads the colour code once, so the pills below do not have to explain
+       themselves one hover at a time. Quiet: it is a key, not a heading. */
+    /*
+      What a shut card holds. Each count wears the colour of the thing it counts,
+      matching the pills inside, so the header reads as a summary of the card
+      rather than as a row of numbers.
+    */
+    .header-summary {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-left: 4px;
+      text-transform: none;
+      letter-spacing: 0;
+
+      .summary-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-height: 24px;
+        padding: 0 11px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 0.64rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+
+      /* The number leads — it is what is being read. */
+      .summary-count {
+        font-size: 0.72rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /*
+        Three or four counts in the row. They give up the height they match the
+        cards above with, because the alternative is wrapping onto a second line
+        and standing a shut card taller than every other shut card in the stack.
+      */
+      &.is-dense {
+        gap: 4px;
+
+        .summary-chip {
+          min-height: 20px;
+          padding: 0 8px;
+          gap: 4px;
+          font-size: 0.58rem;
+        }
+
+        .summary-count {
+          font-size: 0.65rem;
+        }
+      }
+
+      /* Already on the books: a thing to notice, not a success. Matches the
+         Duplicate Entry pill on the rows. */
+      .duplicate {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #b45309;
+      }
+
+      /* Still to be receipted — the payments the rest of the pipeline acts on. */
+      .new {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #047857;
+      }
+
+      /* A reviewer's own verdict, in their own words. */
+      .other {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #4338ca;
+      }
+
+      .complete {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #047857;
+      }
+
+      .incomplete {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #b91c1c;
+      }
+    }
+
+    /*
+      The key to the pills below. Each half is a pill of its own, wearing the
+      colours it explains — a green chip saying "Valid", a red one saying
+      "Required" — so the legend is read as a sample of the thing rather than as
+      two words in grey beside a dot.
+    */
+    .field-legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 4px;
+      text-transform: none;
+      letter-spacing: 0;
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 24px;
+        padding: 0 11px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        /* A ring of the pill's own background, so the dot reads as a bead set
+           into the chip rather than as a full stop stuck to the text. */
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+      }
+
+      .valid {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #047857;
+
+        .legend-dot {
+          background: #059669;
+        }
+      }
+
+      .required {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #b91c1c;
+
+        .legend-dot {
+          background: #dc2626;
+        }
+      }
+    }
+  }
+
+  /* Both header buttons are the same rounded square: an icon and nothing else,
+     matching the accordion chevrons used by the cards above. */
+  .icon-btn {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease,
+      color 0.2s ease;
+
+    svg {
+      stroke: currentColor;
+    }
+  }
+
+  .show-more-btn {
+    cursor: pointer;
+    font-family: inherit;
+
+    /* filled on hover — it acts, unlike the chevron, which only reveals */
+    &:hover {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+      box-shadow: 0 3px 10px rgba(79, 70, 229, 0.25);
+    }
+  }
+
+  .header-right-action .chevron-icon {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+
+    &.rotated {
+      transform: rotate(180deg);
+      color: #4f46e5;
+    }
+  }
+
+  .status {
+    font-size: 0.75rem;
+    color: #64748b;
+
+    &.error {
+      color: #b91c1c;
+      font-weight: 600;
+    }
+  }
+
+  /* Payment Rows Container (INLINE CARD: EVERY RECORD, SCROLLABLE) */
+  .payment-rows {
+    max-height: 270px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px; 
+    padding-right: 4px;
+
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
+    &::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #818cf8;
+      border-radius: 4px;
+
+      &:hover {
+        background: #6366f1;
+      }
+    }
+  }
+
+  .payment-row {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      border-color: #c7d2fe;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
+    }
+
+  /*
+    Label and dropdown as one pill, the same filter control the receipts
+    summary uses: caption on the left, value in bold, chevron at the end, all
+    inside one hairline border.
+  */
+  .cash-header-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* Its own line, the full width of the card: the account names run to
+       nearly sixty characters and were being cut off beside the payment
+       number. */
+    width: 100%;
+    min-width: 0;
+    margin: 6px 0 2px;
+    padding: 2px 2px 2px 12px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid #dfe4ee;
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    cursor: pointer;
+  }
+
+  .cash-header-label {
+    flex-shrink: 0;
+    font-size: 0.57rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  /*
+    Pride account. The native select keeps its keyboard and screen-reader
+    behaviour; only its chrome is replaced. Takes the whole line so the account
+    reads in full — no cap on the width any more.
+  */
+  .cash-header-account {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 24px 4px 8px;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #0f172a;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+    background-size: 11px 11px;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: #eef2ff;
+    }
+
+    &:focus-visible {
+      background-color: #eef2ff;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+    }
+
+    /* The menu itself is drawn by the OS, so give it a real surface. */
+    option {
+      background: #ffffff;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    /* Chosen: green, like every other field that is ready to be receipted. */
+    &.is-chosen {
+      color: #047857;
+      background-color: #ecfdf5;
+    }
+
+    /* Mapped but not chosen yet — a field the receipt still needs. */
+    &.is-blank {
+      color: #b91c1c;
+      background-color: #fef2f2;
+    }
+
+    /* No master row for this project — nothing to pick, and the control says
+       so rather than sitting there empty. */
+    &.is-unmapped {
+      color: #94a3b8;
+      background-image: none;
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
+    }
+  }
+
+  .payment-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f1f5f9;
+
+    .payment-no {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+
+
+    /* Sits where the verification flag pill used to. Off is slate, on is
+       indigo — the palette the rest of the panel switches with. */
+    .payment-toggle {
+      display: inline-flex;
+      align-items: center;
+      padding: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+      line-height: 0;
+
+      .toggle-track {
+        display: inline-flex;
+        align-items: center;
+        width: 36px;
+        height: 20px;
+        padding: 2px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        border: 1px solid #cbd5e1;
+        transition: background 0.18s ease, border-color 0.18s ease;
+      }
+
+      .toggle-knob {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+        transform: translateX(0);
+        transition: transform 0.18s ease;
+      }
+
+      &.is-on {
+        .toggle-track {
+          background: #4f46e5;
+          border-color: #4338ca;
+        }
+
+        .toggle-knob {
+          transform: translateX(16px);
+        }
+      }
+
+      /* Already on the books: the switch is off and cannot be moved. Held
+         flatter than an idle one so it reads as settled, not as something
+         waiting to be clicked. */
+      &.is-locked {
+        cursor: not-allowed;
+
+        .toggle-track {
+          background: #eef2f6;
+          border-color: #dbe2ea;
+        }
+
+        .toggle-knob {
+          background: #f8fafc;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid #6366f1;
+        outline-offset: 2px;
+        border-radius: 999px;
+      }
+    }
+  }
+
+  .payment-fields {
+    display: grid;
+    /* Amount / Payment Mode / UTR-Instrument / Customer Bank / Account Number.
+       Not five equal tracks: the amount is a short number, while the UTR needs
+       the room to keep its label on one line and its pill unwrapped. */
+    grid-template-columns: 0.65fr 1fr 1.55fr 1fr 1.15fr;
+    gap: 12px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      .lbl {
+        font-size: 0.62rem;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      .val {
+        font-size: 0.78rem;
+        color: #1e293b;
+        font-weight: 700;
+        word-break: break-word;
+
+        &.amount {
+          color: #4f46e5;
+          font-size: 0.82rem;
+          font-weight: 800;
+        }
+
+        /* Instrument Match outcome — green when found in the bank statement,
+           red when not. See .match-pill at the end of this file. */
+      }
+    }
+  }
+
+  .remark {
+    font-size: 0.72rem;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 6px;
+    padding: 6px 10px;
+    line-height: 1.4;
+
+    strong {
+      color: #1e293b;
+    }
+  }
+}
+
+/* ======================================================
+   POPUP MODAL DIALOG STYLES
+   ====================================================== */
+.payment-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.payment-modal-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #eef2ff;
+    border-bottom: 1px solid #c7d2fe;
+
+    .modal-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .modal-icon {
+        width: 38px;
+        height: 38px;
+        background: #ffffff;
+        border: 1px solid #c7d2fe;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #312e81;
+        line-height: 1.2;
+      }
+
+      .modal-sub {
+        font-size: 0.74rem;
+        color: #4338ca;
+        font-weight: 600;
+      }
+    }
+
+    .close-modal-btn {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #fee2e2;
+        color: #991b1b;
+        border-color: #fca5a5;
+      }
+    }
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #f8fafc;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .modal-payment-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+
+      /* The modal's copy of the pill. On its own line under the header, the full
+         width of the card, so the whole account string reads. */
+      .cash-header-field {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        min-width: 0;
+        margin: 8px 0 4px;
+        padding: 2px 2px 2px 14px;
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid #dfe4ee;
+        border-radius: 999px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        cursor: pointer;
+      }
+      .cash-header-label {
+        flex-shrink: 0;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        white-space: nowrap;
+      }
+
+      .cash-header-account {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 5px 26px 5px 10px;
+        appearance: none;
+        -webkit-appearance: none;
+        font-family: inherit;
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #0f172a;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        background-color: transparent;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 12px 12px;
+        border: none;
+        border-radius: 999px;
+        cursor: pointer;
+        outline: none;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+          background-color: #eef2ff;
+        }
+
+        &:focus-visible {
+          background-color: #eef2ff;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+        }
+
+        option {
+          background: #ffffff;
+          color: #1e293b;
+          font-weight: 600;
+        }
+
+        /* Same three states as the inline card — the modal shows the same rows,
+           so it must not disagree with the card behind it. */
+        &.is-chosen {
+          color: #047857;
+          background-color: #ecfdf5;
+        }
+
+        &.is-blank {
+          color: #b91c1c;
+          background-color: #fef2f2;
+        }
+
+        &.is-unmapped {
+          color: #94a3b8;
+          background-image: none;
+          cursor: not-allowed;
+
+          &:hover {
+            background-color: transparent;
+          }
+        }
+      }
+
+
+      .modal-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+
+        .pay-num {
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: #0f172a;
+          flex-shrink: 0;
+        }
+
+
+        /* The modal's copy of the toggle, a size up to match its larger type */
+        .payment-toggle {
+          display: inline-flex;
+          align-items: center;
+          padding: 0;
+          border: none;
+          background: none;
+          cursor: pointer;
+          line-height: 0;
+
+          .toggle-track {
+            display: inline-flex;
+            align-items: center;
+            width: 40px;
+            height: 22px;
+            padding: 2px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            transition: background 0.18s ease, border-color 0.18s ease;
+          }
+
+          .toggle-knob {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+            transform: translateX(0);
+            transition: transform 0.18s ease;
+          }
+
+          &.is-on {
+            .toggle-track {
+              background: #4f46e5;
+              border-color: #4338ca;
+            }
+
+            .toggle-knob {
+              transform: translateX(18px);
+            }
+          }
+
+          /* Same locked state as the inline card */
+          &.is-locked {
+            cursor: not-allowed;
+
+            .toggle-track {
+              background: #eef2f6;
+              border-color: #dbe2ea;
+            }
+
+            .toggle-knob {
+              background: #f8fafc;
+              box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+            }
+          }
+
+          &:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+            border-radius: 999px;
+          }
+        }
+      }
+
+      .modal-grid-fields {
+        display: grid;
+        /* Weighted like the inline card: the amount is a short number, while
+           the UTR and the account number need room to stay on one line. */
+        grid-template-columns: 0.6fr 0.95fr 1.4fr 0.95fr 1.25fr;
+        gap: 14px;
+
+        @media (max-width: 768px) {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .m-field {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+
+          .m-lbl {
+            font-size: 0.65rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .m-val {
+            font-size: 0.82rem;
+            color: #1e293b;
+            font-weight: 700;
+            word-break: break-word;
+
+            &.amount {
+              color: #4f46e5;
+              font-size: 0.9rem;
+              font-weight: 800;
+            }
+
+            &.mono {
+              font-family: monospace;
+              color: #4338ca;
+            }
+          }
+        }
+      }
+
+      .m-remark {
+        font-size: 0.76rem;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 8px;
+        padding: 8px 12px;
+
+        strong {
+          color: #0f172a;
+        }
+      }
+    }
+  }
+
+  .modal-footer {
+    padding: 12px 20px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+
+    .close-btn-secondary {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 6px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+    }
+  }
+}
+
+/* ======================================================
+   INSTRUMENT MATCH PILL
+   Applied to the instrument number once the Instrument Match step has run:
+   green when the number was found in the month's bank statement, red when it
+   was not. Styled with high saturation and specificity so it applies vividly
+   in both the inline payment card and the "All Payment Details" modal.
+   ====================================================== */
+.val.match-pill,
+.m-val.match-pill,
+.match-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.3px;
+  border: 1.5px solid transparent;
+  transition: all 0.2s ease-in-out;
+
+  &.matched {
+    background: #d1fae5 !important; /* Richer, saturated Emerald green tint */
+    color: #065f46 !important;      /* Deep high-contrast Emerald text */
+    border-color: #34d399 !important;/* Vibrant, crisp green border */
+    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+
+  &.unmatched {
+    background: #fee2e2 !important; /* Richer, saturated Red tint */
+    color: #991b1b !important;      /* Deep high-contrast Red text */
+    border-color: #f87171 !important;/* Vibrant, crisp red border */
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+}
+
+/* ======================================================
+   BANK RECONCILIATION TAGS
+   Duplicate-entry flag sits before the verification tag on each payment card.
+   "MATCH" here means a duplicate WAS found, so it reads as a warning rather
+   than a success — the opposite of the instrument/amount pills.
+   ====================================================== */
+.header-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/*
+  [Instrument Match] — whether the row carries every field a receipt needs.
+  Green when it does, red when it does not, and the red one always has red fields
+  below it saying which. Outlined rather than filled so the two pills beside each
+  other do not read as one loud block.
+*/
+.match-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  white-space: nowrap;
+
+  /* Says which column this is, the same label │ value shape the thread header
+     chips use. Held lighter than the verdict it introduces. */
+  .match-tag-label {
+    font-weight: 700;
+    opacity: 0.75;
+    padding-right: 5px;
+    border-right: 1px solid currentColor;
+    border-right-color: rgba(0, 0, 0, 0.12);
+  }
+
+  &.incomplete {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+  }
+
+  /* The step has not run yet — grey, because "not checked" is not a failure. */
+  &.pending {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+  }
+}
+
+/*
+  Whether the payment is already on the books. Green for a new entry — one still
+  to be receipted, and the only kind Bank Reconciliation looks at — amber for one
+  SALES_RECEIPT already holds, which is a thing to notice rather than a success.
+*/
+.entry-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  white-space: nowrap;
+
+  &.duplicate {
+    background: #fffbeb;
+    color: #b45309;
+    border-color: #fde68a;
+  }
+}
+
+/* The amount keeps its indigo weight until Bank Reconciliation runs, then takes
+   the shared match pill. Overrides .amount's own colour, hence the nesting. */
+.val.amount.match-pill,
+.m-val.amount.match-pill {
+  &.matched {
+    color: #047857;
+  }
+
+  &.unmatched {
+    color: #b91c1c;
+  }
+}
+
+/* ── "Why is this a duplicate?" ─────────────────────── */
+
+/*
+  Asked before the switch is written, not after. Sits above the payment card it
+  belongs to, deliberately small: one question, one box, two buttons.
+*/
+.reason-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.reason-dialog {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 12px 24px rgba(15, 23, 42, 0.14);
+}
+
+.reason-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  h4 {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+  }
+
+  .reason-sub {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+}
+
+.reason-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .reason-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #64748b;
+
+    .reason-required {
+      color: #dc2626;
+    }
+  }
+
+  textarea {
+    padding: 7px 9px;
+    font-family: inherit;
+    font-size: 0.74rem;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    resize: vertical;
+
+    &:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+    }
+  }
+
+  .reason-hint {
+    font-size: 0.62rem;
+    color: #94a3b8;
+  }
+}
+
+.reason-error {
+  padding: 6px 9px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.reason-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .reason-btn {
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &.ghost {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+
+      &:hover {
+        background: #f8fafc;
+      }
+    }
+
+    &.primary {
+      background: #4f46e5;
+      border: 1px solid #4338ca;
+      color: #ffffff;
+
+      &:hover {
+        background: #4338ca;
+      }
+    }
+  }
+}
+
+/* ── Settled rows ───────────────────────────────────── */
+
+/*
+  A payment nobody may change any more: the system found it on a receipt, or the
+  bank statement has already matched it. The account keeps whatever colour its
+  value earned, but drops the chevron and the hover — it is a value now, not a
+  choice.
+*/
+.cash-header-account.is-fixed {
+  background-image: none;
+  padding-right: 10px;
+  cursor: default;
+  opacity: 1;
+
+  &:hover {
+    background-color: transparent;
+  }
+}
+
+.cash-header-field:has(.cash-header-account.is-fixed) {
+  cursor: default;
+}
+
+/* ── Row-level warning ──────────────────────────────── */
+
+/*
+  A payment its step could not settle, said on the payment itself. Amber rather
+  than red: the search came back empty, which is something to act on, not
+  something that has gone wrong with the data.
+*/
+.row-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 0.67rem;
+  line-height: 1.45;
+  color: #92400e;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    stroke: #d97706;
+  }
+
+  strong {
+    font-weight: 700;
+    color: #78350f;
+  }
+}
+
+/*
+  Which workbook Bank Reconciliation searched, and its last record's Value
+  Date — two pills with a vertical divider between them. Amber, the same as
+  the warning box above: this is context for an Unmatch, not a success, and
+  green (the "field has a value" colour elsewhere on this card) would say the
+  opposite of what happened here.
+*/
+.bank-reco-note {
+  margin-top: 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+
+  .bank-reco-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+
+    /* What the value is, held lighter — the value itself is the point of the
+       pill, the label only says which fact this one is. */
+    .bank-reco-chip-label {
+      font-weight: 600;
+      opacity: 0.75;
+    }
+  }
+
+  /* Between the two pills — a divider, not a third piece of text. */
+  .bank-reco-sep {
+    width: 1px;
+    align-self: stretch;
+    background: #fcd34d;
+  }
+
+  /* Why no statement could be checked. Plain text rather than a pill: it can
+     run long (a folder name, a locked-file message) and has to wrap. */
+  .bank-reco-reason {
+    flex: 1 1 100%;
+    color: #92400e;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+
+    .bank-reco-chip-label {
+      font-weight: 700;
+    }
+  }
+}

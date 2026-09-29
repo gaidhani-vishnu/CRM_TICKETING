@@ -1,0 +1,184 @@
+/*
+  Same backdrop/dialog language as <app-alert-popup> — scrim + fade,
+  rounded card + rise-in — but `position: fixed` rather than `absolute`:
+  this modal is opened from <app-user-account-menu>, which can sit in any
+  page's header, not one container guaranteed to cover the viewport.
+  Indigo head (the app's own brand accent) rather than alert-popup's red,
+  since this is an ordinary "your info" view, not something needing attention.
+*/
+.profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  animation: profile-modal-fade 0.16s ease-out;
+}
+
+.profile-modal-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 12px 24px rgba(15, 23, 42, 0.14),
+    0 32px 64px rgba(15, 23, 42, 0.24);
+  animation: profile-modal-rise 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes profile-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes profile-modal-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-modal-backdrop,
+  .profile-modal-dialog {
+    animation: none;
+  }
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.profile-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 14px;
+  background: linear-gradient(135deg, #eef2ff 0%, #ede9fe 100%);
+  border-bottom: 1px solid #e0e7ff;
+
+  .profile-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .profile-modal-head-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.32);
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+  }
+
+  .profile-modal-close {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: #c7d2fe;
+      color: #4338ca;
+    }
+  }
+}
+
+/* ── Body ───────────────────────────────────────────── */
+
+.profile-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 20px 22px;
+}
+
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.profile-fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+}
+
+.profile-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.profile-field-value {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #1e293b;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-role-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+}

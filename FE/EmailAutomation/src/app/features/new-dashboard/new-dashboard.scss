@@ -1,0 +1,174 @@
+/*
+  Same "ultra-modern premium glass" canvas + header as
+  email-automation-workflow / user-dashboard, so this page reads as part
+  of the same app rather than a bare placeholder screen.
+*/
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 35%, #1e1b4b 70%, #090d16 100%);
+}
+
+.new-dashboard-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 12% 15%, rgba(99, 102, 241, 0.22) 0%, transparent 45%),
+              radial-gradient(circle at 88% 85%, rgba(168, 85, 247, 0.18) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+
+  .dashboard-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    padding: 12px 16px;
+    gap: 12px;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+}
+
+.top-app-header {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  padding: 10px 18px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .brand-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .brand-icon {
+        width: 34px;
+        height: 34px;
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+      }
+
+      .brand-name {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+
+        .accent-text {
+          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-weight: 800;
+        }
+      }
+    }
+
+    .title-meta .page-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+    }
+  }
+
+  .header-right {
+    position: relative;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.coming-soon-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.coming-soon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 420px;
+  padding: 48px 40px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.coming-soon-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #eef2ff 0%, #ede9fe 100%);
+  color: #6366f1;
+}
+
+.coming-soon-title {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+.coming-soon-message {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.coming-soon-tag {
+  margin: 12px 0 0;
+  padding: 4px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+  .coming-soon-card {
+    padding: 36px 24px;
+  }
+}

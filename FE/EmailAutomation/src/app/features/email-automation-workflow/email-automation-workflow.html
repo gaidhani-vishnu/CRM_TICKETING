@@ -1,0 +1,1038 @@
+<div class="email-workflow-app-container">
+
+  <!-- MAIN GLASS CONTAINER FOR 3 PARTS -->
+  <main class="dashboard-body">
+
+    <!-- TOP HEADER TOOLBAR (WITHOUT SIDEBAR) -->
+    <header class="top-app-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <span class="brand-name">CRM Ticket <span class="accent-text">Automation</span></span>
+        </div>
+
+        <div class="title-meta">
+          <h1 class="page-title">Workflow Intelligence Dashboard</h1>
+          <span class="subtitle-divider">•</span>
+          <span class="subtitle">AI-Driven Workflow &amp; Email Thread Analysis</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Workflow Status Badge -->
+        <div class="header-status-badge" *ngIf="selectedRow">
+          <span class="status-indicator-dot"></span>
+          <span class="status-title">Workflow Status:</span>
+          <span class="status-value-pill">{{ selectedRow.workflowStatus || 'Processed' }}</span>
+        </div>
+
+        <!-- Top Screen Switch Button: Go to User Dashboard -->
+        <button
+          type="button"
+          class="header-nav-switch-btn"
+          (click)="goToDashboard()"
+          title="Open the intent-wise dashboard"
+          aria-label="Open the intent-wise dashboard"
+        >
+          <span class="switch-btn-icon">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+          <span class="switch-btn-text">User Dashboard</span>
+        </button>
+
+        <!-- Whose threads this screen is showing. The same picker the User
+             Dashboard carries, over the same shared choice, so moving between
+             the two screens keeps the person you were looking at. -->
+        <app-user-filter
+          [options]="ownerOptions"
+          [selected]="ownerFilter"
+          (selectedChange)="onOwnerChange($event)"
+        ></app-user-filter>
+
+        <!-- The signed-in user's own menu — My Profile / Logout. Compact:
+             this row is already carrying the status badge, the screen
+             switch and the owner picker, with no width for a labelled 4th. -->
+        <app-user-account-menu [compact]="true"></app-user-account-menu>
+      </div>
+    </header>
+
+    <!-- UNIFIED 36PX KPI STATUS RIBBON ROW -->
+    <app-kpi-status-ribbon [summary]="summary"></app-kpi-status-ribbon>
+
+    <!-- Action Toast Notice -->
+    <div class="action-toast" *ngIf="actionNotice">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span>{{ actionNotice }}</span>
+    </div>
+
+    <!-- 2-PART SPLIT GRID -->
+    <div class="three-part-layout">
+
+      <!-- ==================================================== -->
+      <!-- PART 1: THE WORKSPACE — receipts list + pipeline.     -->
+      <!--                                                      -->
+      <!-- One part of two, not two of three: picking a thread   -->
+      <!-- and watching its pipeline is a single activity, and   -->
+      <!-- Thread Details on the right is what you read while    -->
+      <!-- doing it. The two keep their own cards inside.        -->
+      <!-- ==================================================== -->
+      <div class="part-1-workspace">
+
+      <!-- ========================================== -->
+      <!-- EMAIL RECEIPTS LIST                        -->
+      <!-- ========================================== -->
+      <section class="part-panel part-1-receipts">
+        <div class="panel-header">
+          <!-- The count belongs to the title, so it sits inside the group with
+               it: as a third child of the header it was spaced apart from the
+               name it counts and left stranded mid-row. -->
+          <div class="title-group">
+            <h3>Email Receipts</h3>
+
+            <!--
+              How many threads are on screen — not how many the day holds. The
+              pills and the search box both narrow the list, and this follows
+              them, so the number beside the title always describes what is
+              underneath it.
+            -->
+            <span class="receipts-count-pill">{{ visibleReceiptsCount }}</span>
+          </div>
+
+          <!-- Date Selector Dropdown aligned to the right side -->
+          <app-email-date-dropdown (dateSelected)="onDateSelected($event)"></app-email-date-dropdown>
+        </div>
+
+        <div class="panel-content">
+          <app-email-receipts-table
+            #receiptsTable
+            [date]="tableDate"
+            [selectedThreadId]="selectedRow?.threadId || openThreadId"
+            [ownerFilter]="ownerFilter"
+            (ownersChanged)="onOwnersChanged($event)"
+            (rowSelected)="onRowSelected($event)"
+            (rowsLoaded)="onRowsLoaded($event)"
+            (visibleCountChanged)="onVisibleCountChanged($event)"
+            (ticketsResolved)="onTicketsResolved($event)"
+            (selectedTicketChanged)="onSelectedTicketChanged($event)"
+            (summaryRequested)="openSummary()"
+            (alertPopupRequested)="openAlertPopup($event)"
+          ></app-email-receipts-table>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- WORKFLOW DESIGNER                          -->
+      <!-- ========================================== -->
+      <section class="part-panel part-3-workflow-designer">
+        <app-workflow-visualizer
+          #pipeline
+          [selectedRow]="selectedRow"
+          [date]="selectedDate"
+          [ticketId]="selectedTicketId"
+          [ticketStatus]="selectedTicketStatus"
+          [ticketSla]="selectedTicketSla"
+          [ticketClosedOn]="selectedTicketClosedOn"
+          [ticketCreatedOn]="selectedTicketCreatedOn"
+          (paymentDetailsChanged)="onPaymentDetailsChanged()"
+          (assignmentChanged)="onAssignmentChanged()"
+          (ticketClosed)="onTicketClosed($event.threadId, $event.slaStatus, $event.closedOn)"
+          (stageChanged)="onStageChanged($event)"
+          (emailResponseDrafted)="openDraftedReply($event)"
+        ></app-workflow-visualizer>
+      </section>
+
+      <!--
+        Attachments opens over part 1 — the receipts list and the pipeline —
+        rather than over Thread Details, so the file and the thread it belongs to
+        can be read side by side. Laid over this wrapper rather than placed in
+        its grid: an absolute child is out of flow, so it covers both cards
+        without becoming a third column of its own.
+      -->
+      <app-thread-attachments
+        [threadId]="attachmentsThreadId"
+        [class.popup-on-top]="lastOpenedPopup === 'attachments'"
+        (closed)="closeAttachments()"
+      ></app-thread-attachments>
+
+      <!-- Same reasoning as Attachments above — opened from the bell badge
+           beside a row's Ticket ID, over part 1 rather than inside the
+           receipts panel alone.
+
+           Also opened by the pipeline's Email Response button, which sends its
+           drafted reply in through [draftedReply] rather than raising a popup
+           of its own. The ticket question inside that draft is answered here but
+           acted on by the pipeline, which is what owns the ticket. -->
+      <app-alert-popup
+        [row]="alertPopupRow"
+        [draftedReply]="alertPopupDraft"
+        [class.popup-on-top]="lastOpenedPopup === 'alert'"
+        (closed)="closeAlertPopup()"
+        (saved)="onAlertReplySaved($event)"
+        (ticketCloseChoice)="pipeline.onEmailTicketCloseChoice($event)"
+      ></app-alert-popup>
+
+      </div>
+      <!-- /PART 1 -->
+
+      <!-- ========================================== -->
+      <!-- PART 2: RIGHT SIDE - PARTICULAR THREAD DETAILS -->
+      <!-- ========================================== -->
+      <section class="part-panel part-2-thread-details">
+        <ng-container *ngIf="selectedRow; else noThreadSelected">
+
+          <!-- Panel Header -->
+          <div class="panel-header">
+            <!--
+              The panel title used to be a static "Thread Details" heading. The
+              ticket now leads instead — its id, status and category say which
+              thread this is, which the heading never did.
+              Thread ID badge stays available: <span class="thread-id-badge">ID: {{ selectedRow.threadId }}</span>
+            -->
+            <div class="title-with-badge thread-identity">
+              <span class="ticket-id-badge" *ngIf="selectedTicketId" title="Ticket raised for this thread">
+                <span class="badge-label">Ticket ID</span>
+                <span class="badge-value">{{ selectedTicketId }}</span>
+              </span>
+
+              <span
+                class="ticket-status-badge"
+                *ngIf="selectedTicketStatus"
+                [class.closed]="isSelectedTicketClosed"
+                title="Ticket status"
+              >
+                <span class="badge-label">Status</span>
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="badge-value">{{ selectedTicketStatus }}</span>
+              </span>
+
+              <!--
+                Category moved down to the Ticket card's own title row, next to
+                Primary Intent — the two are what the ticket was classified as,
+                and they read together. The SLA takes its place here, where it
+                stays visible however far the panel is scrolled.
+              -->
+              <!--
+                Reads three ways: counting down while the ticket is on track,
+                "Overdue SLA" counting up once it has run past, and the settled
+                outcome once the ticket has been closed — where there is no
+                clock left to show, only whether it was met.
+              -->
+              <span
+                class="sla-badge"
+                *ngIf="selectedTicketSla"
+                [class.expired]="isSelectedTicketOverdue"
+                [class.met]="isSelectedTicketSlaMet"
+                [title]="
+                  'SLA ' +
+                  selectedTicketSla +
+                  (selectedTicketSlaDue ? ' · due ' + selectedTicketSlaDue : '')
+                "
+              >
+                <span class="badge-label">{{ isSelectedTicketOverdue ? 'Overdue SLA' : 'SLA' }}</span>
+                <span class="sla-dot" aria-hidden="true"></span>
+                <span class="badge-value" *ngIf="slaRemaining">
+                  {{ slaIsExpired ? '+' : '' }}{{ slaRemaining }}
+                </span>
+                <span class="badge-value" *ngIf="!slaRemaining">
+                  {{ selectedTicketSlaStatus || selectedTicketSla }}
+                </span>
+              </span>
+            </div>
+
+            <div class="header-actions">
+              <!-- The Draft Email button stood here. Writing to the customer
+                   about an alert is now done in the Alert Response panel's own
+                   Respond compose, under the reply it answers, rather than in a
+                   popup opened from the header with the reply out of sight. -->
+
+              <a
+                *ngIf="selectedRow.emailLink"
+                [href]="selectedRow.emailLink"
+                target="_blank"
+                rel="noopener"
+                class="action-header-btn open-email-header-btn"
+                title="Open original email link"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Open Email</span>
+              </a>
+
+              <!-- Files the pipeline saved for this thread. Listed on click, not on
+                   selection — most threads are read without anyone opening them. -->
+              <button
+                type="button"
+                class="action-header-btn attachments-header-btn"
+                (click)="openAttachments()"
+                title="Files saved for this thread"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+                <span>Attachments</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Thread Body Scrollable Area -->
+          <div class="thread-body-content" #threadBodyContent>
+
+            <!--
+              The advance button of whichever step the pipeline is on, rendered
+              inside that step's own card rather than at the foot of the panel —
+              the reviewer reads the block, then acts on it, without scrolling
+              past everything else to find the button.
+            -->
+            <ng-template #stageActionButton>
+              <div class="stage-action" *ngIf="stage.action || stage.gateActions.length">
+                <!--
+                  A stopped step's three choices, mirrored from the pipeline
+                  card: Email Response, Verify, Edit & Save, on one line. Edit &
+                  Save only saves; Verify re-runs the step against what was
+                  saved, and only a pass turns this row into the advance button.
+                -->
+                <button
+                  type="button"
+                  class="gate-action-btn"
+                  *ngFor="let gateAction of stage.gateActions"
+                  [ngClass]="'gate-' + gateAction.kind"
+                  [class.is-next]="gateAction.kind === 'verify' && stage.needsVerify"
+                  (click)="onStageAction(gateAction.id)"
+                >
+                  <svg *ngIf="gateAction.kind === 'email'" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  <svg *ngIf="gateAction.kind === 'verify'" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <svg *ngIf="gateAction.kind === 'edit'" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"></path>
+                  </svg>
+                  <svg *ngIf="gateAction.kind === 'close'" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                  </svg>
+                  <span>{{ gateAction.label }}</span>
+                </button>
+
+                <button type="button" class="stage-action-btn" *ngIf="stage.action" (click)="onStageAction()">
+                  {{ stage.action.label }}
+                </button>
+              </div>
+            </ng-template>
+
+            <!--
+              STEP 1 · Ticket: the ticket, its SLA and the analysis it was raised
+              from. First card in the panel — it is what the reviewer is here to
+              judge, so it is not read after the subject and body but before them.
+              Still gated on `stage.cards.ticket`, like every other step card.
+            -->
+            <div
+              class="ai-insights-card collapsible-card"
+              *ngIf="stage.cards.ticket.visible"
+              [class.is-expanded]="isTicketCardExpanded"
+              [class.is-active-step]="stage.cards.ticket.active"
+            >
+              <!-- Whole title row is the toggle, same as the Message Body card -->
+              <div class="card-title clickable-header" (click)="toggleTicketCard()">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="#6366f1" stroke-width="2" fill="none">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v3a3 3 0 0 0 0 6v3c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-3a3 3 0 0 0 0-6V6c0-1.1.9-2 2-2z"></path>
+                </svg>
+                <span class="card-title-text">Ticket</span>
+
+                <!--
+                  What the ticket was classified as. Unlike the other cards'
+                  previews this stays on the row while the card is open: it is
+                  the headline of everything in the grid below, not a stand-in
+                  for it. Ticket id and status are not repeated — the panel
+                  header carries those.
+                -->
+                <div class="header-preview">
+                  <span class="hp-item hp-category" *ngIf="selectedRow.category">
+                    <span class="hp-label">Category</span>
+                    <span class="hp-value">{{ selectedRow.category }}</span>
+                  </span>
+
+                  <span class="hp-item hp-intent">
+                    <span class="hp-label">Primary Intent</span>
+                    <span class="hp-value">{{ selectedRow.intent || 'General Inquiry' }}</span>
+                  </span>
+                </div>
+
+                <!-- Step finished. Sits before the chevron so the row reads
+                     "done, and here is how to open it". -->
+                <span class="step-done-check" *ngIf="stage.cards.ticket.done" title="This step is done">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+
+                <!-- Chevron alone carries the state; the Expand/Collapse text
+                     it replaced said nothing the arrow direction did not -->
+                <div class="header-right-action" [title]="isTicketCardExpanded ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isTicketCardExpanded" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Eight fields here, twice what the other cards carry — fixed at
+                   four per row so they read as two even rows instead of however
+                   many auto-fit happens to squeeze in. -->
+              <div class="insights-grid four-up" *ngIf="isTicketCardExpanded">
+                <div class="insight-box">
+                  <span class="lbl">Ticket ID</span>
+                  <span class="val highlight">{{ selectedTicketId || 'Not raised yet' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Ticket Status</span>
+                  <span class="val">{{ selectedTicketStatus || '—' }}</span>
+                </div>
+
+                <!-- Category classifies the ticket, so it belongs with the
+                     ticket's own fields rather than on the sender line -->
+                <div class="insight-box" *ngIf="selectedRow?.category">
+                  <span class="lbl">Category</span>
+                  <span class="val">{{ selectedRow?.category }}</span>
+                </div>
+
+                <!-- SLA held on the ticket, counting down live from the moment
+                     it was raised — and counting up once it has run out. -->
+                <div class="insight-box" *ngIf="selectedTicketSla">
+                  <span class="lbl">
+                    {{ isSelectedTicketOverdue ? 'Overdue SLA' : 'SLA' }} ({{ selectedTicketSla }})
+                  </span>
+                  <span
+                    class="val sla-countdown"
+                    [class.expired]="isSelectedTicketOverdue"
+                    [class.met]="isSelectedTicketSlaMet"
+                    *ngIf="slaRemaining"
+                  >
+                    <span class="sla-dot"></span>
+                    {{ slaIsExpired ? '+' : '' }}{{ slaRemaining }}
+                  </span>
+
+                  <!-- No clock: the ticket is closed and its SLA settled, or it
+                       has no creation stamp to count from. -->
+                  <span
+                    class="val sla-countdown"
+                    [class.expired]="isSelectedTicketOverdue"
+                    [class.met]="isSelectedTicketSlaMet"
+                    *ngIf="!slaRemaining"
+                  >
+                    {{ selectedTicketSlaStatus || '—' }}
+                  </span>
+
+                  <span class="sla-window" *ngIf="selectedTicketCreatedDate">
+                    Raised {{ selectedTicketCreatedDate }} · Due {{ selectedTicketSlaDue }}
+                  </span>
+                </div>
+
+                <!-- What the ticket was raised from: the email analysis, moved
+                     here from its own card. Same boxes, same grid. -->
+                <div class="insight-box">
+                  <span class="lbl">Primary Intent</span>
+                  <span class="val highlight">{{ selectedRow.intent || 'General Inquiry' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Sub-Intent</span>
+                  <span class="val">{{ selectedRow.subIntent || 'N/A' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Sentiment Score</span>
+                  <span class="val sentiment" [ngClass]="'sentiment-' + (selectedRow.sentiment?.toLowerCase() || 'neutral')">
+                    {{ selectedRow.sentiment || 'Neutral' }}
+                  </span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Confidence</span>
+                  <span class="val confidence">{{ parseConfidence(selectedRow.confidence) }}%</span>
+                </div>
+              </div>
+
+              <!-- Reason. Action Required used to show alongside it here; hidden
+                   on request, but the field itself is untouched — see
+                   selectedRow.actionRequired if it needs to come back. -->
+              <div class="reason-banner" *ngIf="isTicketCardExpanded && selectedRow.reason">
+                <div class="reason-text">
+                  <strong>Analysis Reason:</strong> {{ selectedRow.reason }}
+                </div>
+              </div>
+
+              <!-- Assigned To: the owner Unit Match settled and stored on the
+                   receipts row. Read from main_email_receipts.[Assigned To], never
+                   resolved here — a thread the pipeline has not placed yet has no
+                   owner, and the box simply does not appear. -->
+              <div class="assigned-to-box" *ngIf="isTicketCardExpanded && assignedTo">
+                <div class="assigned-to-heading">Assigned To</div>
+
+                <div class="assigned-list">
+                  <div class="assignee-card">
+                    <div class="user-avatar-mini">{{ getInitials(assignedTo, assignedToEmail) }}</div>
+                    <div class="user-details">
+                      <span class="assignee-name">{{ assignedTo }}</span>
+                      <a class="assignee-mail" *ngIf="assignedToEmail" [href]="'mailto:' + assignedToEmail">{{ assignedToEmail }}</a>
+                      <span class="assignee-mail missing" *ngIf="!assignedToEmail">no email on file</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <ng-container
+                *ngIf="stage.cards.ticket.active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </div>
+
+            <!-- Subject and Message Body are what the thread IS, not a step of
+                 the pipeline, so they are on screen from the moment a thread is
+                 picked. Everything below them appears only once its pipeline
+                 step is in play. -->
+
+            <!-- Subject. Same card, title row and accordion as every other section. -->
+            <div class="subject-banner ai-insights-card collapsible-card" [class.is-expanded]="isSubjectExpanded">
+              <div class="card-title clickable-header" (click)="toggleSubjectCard()">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="#6366f1" stroke-width="2" fill="none">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <span class="card-title-text">Subject</span>
+                <!-- Collapsed preview as a chip, matching Customer Details.
+                     Not sliced: a subject is one line, so CSS ellipsis trims it
+                     only when it actually overflows. No label — the card title
+                     is the only name this one field needs. -->
+                <div class="header-preview" *ngIf="!isSubjectExpanded">
+                  <span class="hp-item hp-text hp-subject">
+                    <span class="hp-value">{{ selectedRow.emailSubject || '(No Subject Line)' }}</span>
+                  </span>
+                </div>
+
+                <div class="header-right-action" [title]="isSubjectExpanded ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isSubjectExpanded" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <h2 class="thread-subject" *ngIf="isSubjectExpanded">{{ selectedRow.emailSubject || '(No Subject Line)' }}</h2>
+            </div>
+
+            <!-- Email Message Card (Accordion - Default Collapsed).
+                 Same .ai-insights-card shell as every other card in this
+                 panel, so it does not read as a different kind of thing. -->
+            <div class="ai-insights-card collapsible-card" [class.is-expanded]="isMessageBodyExpanded">
+              <div class="card-title clickable-header" (click)="toggleMessageBody()">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="#6366f1" stroke-width="2" fill="none">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <span class="card-title-text">Message Body</span>
+                <!-- Chip preview, as on Subject. Still sliced before it is
+                     shown: a body runs to paragraphs, so the ellipsis is on the
+                     text, not left to the chip's own truncation. -->
+                <div class="header-preview" *ngIf="!isMessageBodyExpanded && selectedRow.emailBody">
+                  <span class="hp-item hp-text hp-body">
+                    <span class="hp-value">{{ selectedRow.emailBody.slice(0, 100) }}...</span>
+                  </span>
+                </div>
+
+                <div class="header-right-action" [title]="isMessageBodyExpanded ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isMessageBodyExpanded" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Collapsible Body Content -->
+              <div class="accordion-body-content" *ngIf="isMessageBodyExpanded">
+                <div class="message-text">
+                  {{ selectedRow.emailBody || 'No email body content available for this receipt.' }}
+                </div>
+
+                <!-- Forward Details (If Present) -->
+                <div class="forward-box" *ngIf="selectedRow.forwardDetails">
+                  <div class="forward-header">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                      <polyline points="15 17 20 12 15 7"></polyline>
+                      <path d="M4 18v-2a4 4 0 0 1 4-4h12"></path>
+                    </svg>
+                    Forward Details
+                  </div>
+                  <div class="forward-text">{{ selectedRow.forwardDetails }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!--
+              The Email Analysis card was folded into the Ticket card above —
+              intent, sentiment and confidence are what the ticket was raised
+              from, so they are read together with it rather than as a separate
+              card the reviewer has to open first.
+            -->
+
+            <!--
+              The card opens one section per pipeline step rather than showing the
+              whole case at once. Everything below is gated on `stage`, which the
+              Workflow Pipeline panel emits, so the two can never disagree about
+              how far this thread has got.
+            -->
+
+            <!--
+              Which step the thread is on. Hidden on request — the Workflow
+              Pipeline panel already shows the current step and its status.
+              `stage` still drives which sections below are revealed, so this is
+              display-only; un-commenting restores the line.
+
+            <div class="stage-line" *ngIf="stage.currentStepTitle" [class.is-busy]="stage.busy">
+              <span class="stage-label">Current Step</span>
+              <span class="stage-name">{{ stage.currentStepTitle }}</span>
+
+              <span class="stage-running" *ngIf="stage.busy">
+                <span class="wf-spinner"></span>
+                <span class="stage-running-text">{{ stage.busyLabel }}</span>
+              </span>
+
+              <span
+                class="stage-pill"
+                *ngIf="!stage.busy"
+                [ngClass]="'stage-' + stage.currentStepStatus.toLowerCase()"
+              >
+                {{ stageStatusLabel }}
+              </span>
+            </div>
+            -->
+
+            <!-- STEP 2 · Customer Email Verification: who wrote in, and when -->
+            <div
+              class="ai-insights-card collapsible-card"
+              *ngIf="stage.cards.customer.visible"
+              [class.is-expanded]="isCustomerDetailsExpanded"
+              [class.is-active-step]="stage.cards.customer.active"
+            >
+              <div class="card-title clickable-header" (click)="toggleCustomerDetailsCard()">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="#6366f1" stroke-width="2" fill="none">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="card-title-text">Customer Details</span>
+
+                <!-- Collapsed summary. Name and email only — when the customer
+                     wrote in is read from the box below, not needed to tell one
+                     collapsed card from another. Labelled, because the two are
+                     often the same string. -->
+                <div class="header-preview" *ngIf="!isCustomerDetailsExpanded">
+                  <span class="hp-item hp-name">
+                    <span class="hp-label">Name</span>
+                    <span class="hp-value">{{ selectedRow.customerName || selectedRow.customerSender || 'Customer' }}</span>
+                  </span>
+                  <span class="hp-item hp-email" *ngIf="selectedRow.customerSender">
+                    <span class="hp-label">Email</span>
+                    <span class="hp-value">{{ selectedRow.customerSender }}</span>
+                  </span>
+                </div>
+
+                <span class="step-done-check" *ngIf="stage.cards.customer.done" title="This step is done">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+
+                <div class="header-right-action" [title]="isCustomerDetailsExpanded ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isCustomerDetailsExpanded" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Labelled boxes, the same grid as Ticket and Project & Unit.
+                   The avatar-and-sender-line layout it replaced said which of
+                   the two values was the name and which the address by position
+                   alone; here each field names itself. -->
+              <div class="insights-grid" *ngIf="isCustomerDetailsExpanded">
+                <div class="insight-box">
+                  <span class="lbl">Customer Name</span>
+                  <span class="val highlight">{{ selectedRow.customerName || selectedRow.customerSender || 'Customer' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Email</span>
+                  <span class="val">{{ selectedRow.customerSender || '-' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Received On</span>
+                  <span class="val">{{ selectedRow.emailDate || selectedRow.runDate || '—' }}</span>
+                </div>
+
+                <div class="insight-box" *ngIf="selectedRow.turnAroundDateTime">
+                  <span class="lbl">TAT</span>
+                  <span class="val">{{ selectedRow.turnAroundDateTime }}</span>
+                </div>
+              </div>
+
+              <ng-container
+                *ngIf="stage.cards.customer.active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </div>
+
+            <!-- STEP 3 · Unit Match: the property this thread is about, and who owns it.
+                 Two cards rather than one — the unit and its CRM owners are read
+                 at different moments, so each collapses independently. -->
+            <div
+              class="ai-insights-card collapsible-card"
+              *ngIf="stage.cards.unit.visible"
+              [class.is-expanded]="isProjectUnitExpanded"
+              [class.is-active-step]="stage.cards.unit.active"
+            >
+              <div class="card-title clickable-header" (click)="toggleProjectUnitCard()">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="#6366f1" stroke-width="2" fill="none">
+                  <path d="M3 21h18M5 21V7l7-4 7 4v14"></path>
+                  <path d="M9 21v-6h6v6"></path>
+                </svg>
+                <span class="card-title-text">Project &amp; Unit</span>
+
+                <!-- Labelled and colour-coded, unlike the Customer Details
+                     preview: "Wellington · E · 505" gives no clue which of the
+                     three bare values is the sub project and which the unit. -->
+                <div class="header-preview" *ngIf="!isProjectUnitExpanded">
+                  <span class="hp-item hp-project">
+                    <span class="hp-label">Project</span>
+                    <span class="hp-value">{{ selectedRow.project || '—' }}</span>
+                  </span>
+                  <span class="hp-item hp-subproject">
+                    <span class="hp-label">Sub Project</span>
+                    <span class="hp-value">{{ selectedRow.subProject || '—' }}</span>
+                  </span>
+                  <span class="hp-item hp-unit">
+                    <span class="hp-label">Unit</span>
+                    <span class="hp-value">{{ selectedRow.unit || '—' }}</span>
+                  </span>
+                </div>
+
+                <span class="step-done-check" *ngIf="stage.cards.unit.done" title="This step is done">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+
+                <div class="header-right-action" [title]="isProjectUnitExpanded ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isProjectUnitExpanded" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <!--
+                The customer holds more than one booking that fits this thread,
+                so which unit the payment is for cannot be decided from the email
+                alone. The bookings are listed for the reviewer to pick from;
+                picking one fills whatever the row is missing and runs Unit Match
+                against it.
+              -->
+              <div class="booking-choice" *ngIf="isProjectUnitExpanded && pipeline.hasBookingChoice">
+                <div class="booking-choice-head">
+                  <span class="booking-choice-title">Select the booking this payment is for</span>
+                  <span class="booking-choice-count">{{ pipeline.bookingCandidates.length }} bookings</span>
+                </div>
+
+                <div class="booking-table" role="radiogroup" aria-label="Bookings for this customer">
+                  <div class="booking-row booking-head">
+                    <span class="booking-cell booking-select">Select</span>
+                    <span class="booking-cell">Project</span>
+                    <span class="booking-cell">Sub Project</span>
+                    <span class="booking-cell">Unit</span>
+                    <span class="booking-cell">Booking</span>
+                  </div>
+
+                  <label
+                    class="booking-row"
+                    *ngFor="let booking of pipeline.bookingCandidates"
+                    [class.is-selected]="pipeline.isBookingSelected(booking)"
+                  >
+                    <span class="booking-cell booking-select">
+                      <input
+                        type="radio"
+                        name="booking-choice"
+                        [checked]="pipeline.isBookingSelected(booking)"
+                        (change)="pipeline.selectBooking(booking)"
+                      />
+                    </span>
+                    <span class="booking-cell" [title]="booking.projectName">{{ booking.projectName || '—' }}</span>
+                    <span class="booking-cell">{{ booking.subProjectName || '—' }}</span>
+                    <span class="booking-cell">{{ booking.unitNo || '—' }}</span>
+                    <span class="booking-cell booking-ref">{{ booking.accountItemNo || '—' }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="insights-grid" *ngIf="isProjectUnitExpanded">
+                <div class="insight-box">
+                  <span class="lbl">Project</span>
+                  <span class="val highlight">{{ selectedRow.project || '—' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Sub Project</span>
+                  <span class="val">{{ selectedRow.subProject || '—' }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Unit</span>
+                  <span class="val">{{ selectedRow.unit || '—' }}</span>
+                </div>
+              </div>
+
+              <ng-container
+                *ngIf="stage.cards.unit.active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </div>
+
+            <!-- STEPS A1-A13 · The Agreement Workflow.
+                 One card per stage, for a Non-Payment thread whose Intent and
+                 Sub-Intent are both "Agreement". Drawn by one loop over
+                 AGREEMENT_STEPS rather than thirteen hand-written blocks: the
+                 stages differ only by name, so thirteen copies would be
+                 thirteen places for them to drift apart. A thread that does not
+                 run them has no visible card here at all. -->
+            <ng-container *ngFor="let agreementStep of agreementSteps">
+            <div
+              class="ai-insights-card collapsible-card agreement-step-card"
+              *ngIf="agreementCard(agreementStep.nodeId).visible"
+              [class.is-expanded]="isAgreementStepExpanded(agreementStep.nodeId)"
+              [class.is-active-step]="agreementCard(agreementStep.nodeId).active"
+            >
+              <div class="card-title clickable-header" (click)="toggleAgreementStepCard(agreementStep.nodeId)">
+                <!-- The stage's own icon. Shape comes from the step (see
+                     AGREEMENT_STEPS.iconPaths); stroke, size and colour are the
+                     same on all thirteen and stay here. Every shape is a path,
+                     so one *ngFor draws any of them without a per-icon branch. -->
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  stroke="#6366f1"
+                  stroke-width="2"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path *ngFor="let iconPath of agreementStep.iconPaths" [attr.d]="iconPath"></path>
+                </svg>
+                <span class="card-title-text">{{ agreementStep.title }}</span>
+
+                <!-- Collapsed summary: where the stage stands. Its number in the
+                     thirteen is not repeated here — the cards are in order and
+                     the Workflow Pipeline beside them numbers every step, so a
+                     count on each of thirteen stacked cards was thirteen chips
+                     saying what their own position already says. -->
+                <div class="header-preview" *ngIf="!isAgreementStepExpanded(agreementStep.nodeId)">
+                  <span class="hp-item hp-text hp-intent">
+                    <span class="hp-label">Status</span>
+                    <span class="hp-value">{{ agreementCard(agreementStep.nodeId).done ? 'Verified' : 'Pending' }}</span>
+                  </span>
+                </div>
+
+                <span class="step-done-check" *ngIf="agreementCard(agreementStep.nodeId).done" title="This step is done">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+
+                <div class="header-right-action" [title]="isAgreementStepExpanded(agreementStep.nodeId) ? 'Collapse' : 'Expand'">
+                  <svg class="chevron-icon" [class.rotated]="isAgreementStepExpanded(agreementStep.nodeId)" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+              </div>
+
+              <div
+                class="insights-grid agreement-values"
+                *ngIf="isAgreementStepExpanded(agreementStep.nodeId)"
+              >
+                <!-- No Stage box: the card's own title row already names the
+                     stage, and repeating it directly beneath said the same
+                     thing twice and pushed the fields that differ further
+                     along the row. -->
+                <div class="insight-box">
+                  <span class="lbl">Key Activity</span>
+                  <span class="val is-text">{{ agreementStep.keyActivity }}</span>
+                </div>
+
+                <div class="insight-box">
+                  <span class="lbl">Verified</span>
+                  <span class="val">{{ agreementCard(agreementStep.nodeId).done ? 'Yes' : 'Not yet' }}</span>
+                </div>
+
+                <!-- Only ever the stored stamp, and only on a stage that
+                     passed - the backend stamps nothing else. -->
+                <div class="insight-box" *ngIf="agreementStepDate(agreementStep.stepKey)">
+                  <span class="lbl">Verified On</span>
+                  <span class="val">{{ agreementStepDate(agreementStep.stepKey) | date: 'dd MMM yyyy, HH:mm' }}</span>
+                </div>
+
+              </div>
+
+              <!--
+                What the stage involves, in full, in a grid of its own below the
+                values rather than as a cell spanning theirs.
+
+                Not a cosmetic split. The grid above is auto-fit, which only
+                collapses the tracks it does not need when every track is
+                unused down the whole grid — a box spanning 1 / -1 keeps them
+                all alive, and the four values were being squeezed into the
+                first half of the row while three empty tracks held the rest.
+                On its own, the single box takes the one track that survives and
+                gets the full width, which is what a sentence needs anyway.
+              -->
+              <div class="insights-grid" *ngIf="isAgreementStepExpanded(agreementStep.nodeId)">
+                <div class="insight-box">
+                  <span class="lbl">Description</span>
+                  <span class="val is-prose">{{ agreementStep.description }}</span>
+                </div>
+              </div>
+
+              <!-- The same outlet every other card uses, so Email Response,
+                   Verify and the move-to-next button are built once and behave
+                   the same wherever they are clicked from. -->
+              <ng-container
+                *ngIf="agreementCard(agreementStep.nodeId).active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </div>
+            </ng-container>
+
+            <!-- STEP 4 · Instrument Match: the payment breakdown — every payment
+                 on the thread, its fields, and the New Entry toggle. Its advance
+                 button sits directly under it rather than inside, since the card
+                 is a component of its own. -->
+            <ng-container *ngIf="stage.cards.payments.visible">
+              <app-email-payment-details
+                [date]="selectedDate"
+                [threadId]="selectedRow.threadId"
+                [project]="selectedRow.project"
+                [subProject]="selectedRow.subProject"
+                [refreshToken]="paymentRefreshToken"
+                (rowsChanged)="onPaymentRowsChanged($event)"
+                [expanded]="isPaymentDetailsExpanded"
+                [isActive]="stage.cards.payments.active"
+                [isDone]="stage.cards.payments.done"
+              ></app-email-payment-details>
+
+              <ng-container
+                *ngIf="stage.cards.payments.active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </ng-container>
+
+            <!-- STEP 5 · Bank Reconciliation: the same component in its other
+                 mode, listing only the payments that step processes and what the
+                 statement said about each. Appears when node 5 starts; the card
+                 above it collapses but stays open-able. -->
+            <ng-container *ngIf="stage.cards.bankReco.visible">
+              <app-email-payment-details
+                mode="bankreco"
+                [date]="selectedDate"
+                [threadId]="selectedRow.threadId"
+                [project]="selectedRow.project"
+                [subProject]="selectedRow.subProject"
+                [refreshToken]="paymentRefreshToken"
+                (rowsChanged)="onPaymentRowsChanged($event)"
+                [expanded]="isBankRecoExpanded"
+                [isActive]="stage.cards.bankReco.active"
+                [isDone]="stage.cards.bankReco.done"
+              ></app-email-payment-details>
+
+              <ng-container
+                *ngIf="stage.cards.bankReco.active"
+                [ngTemplateOutlet]="stageActionButton"
+              ></ng-container>
+            </ng-container>
+
+            <!--
+              Fallback position for the mirrored advance button: the steps past
+              Bank Reconciliation have no card of their own, so their button has
+              nothing to sit under and falls back to the foot of the panel.
+            -->
+            <ng-container
+              *ngIf="!stage.activeCard"
+              [ngTemplateOutlet]="stageActionButton"
+            ></ng-container>
+
+          </div>
+        </ng-container>
+
+        <!--
+          Every popup renders inside this panel, the same as the Payment Details
+          modal: `.part-panel` carries a backdrop-filter, which makes it the
+          containing block for `position: fixed` descendants, so a dialog placed
+          here fills the Thread Details panel rather than the whole window.
+          Outside the *ngIf, so they survive a thread not being selected.
+
+          Attachments is the exception — it opens over part 1, see there.
+        -->
+        <app-receipts-summary
+          [date]="summaryDate"
+          (closed)="closeSummary()"
+        ></app-receipts-summary>
+
+        <!--
+          The pipeline's reviewer-correction popup. Still owned and driven by
+          <app-workflow-visualizer> — only its markup lives here, bound through
+          the #pipeline reference, so it opens over the thread it is correcting
+          instead of over the narrow pipeline column that raised it.
+        -->
+        <app-workflow-edit-dialog
+          [request]="pipeline.editRequest"
+          [isSaving]="pipeline.isSavingEdit"
+          [errorMessage]="pipeline.editError"
+          (save)="pipeline.onEditSaved($event)"
+          (cancel)="pipeline.onEditCancelled()"
+        ></app-workflow-edit-dialog>
+
+        <!-- The drafted reply for whichever step stopped used to open a popup of
+             its own here. It now fills the Alert Response compose over part 1
+             instead — see <app-alert-popup> above. -->
+
+        <!-- No Thread Selected State -->
+        <ng-template #noThreadSelected>
+          <div class="empty-thread-state">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="#94a3b8" stroke-width="1.5" fill="none">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <h3>No Thread Selected</h3>
+            <p>Click any email receipt from the list on the left to view thread details and AI classification.</p>
+          </div>
+        </ng-template>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+

@@ -1,0 +1,64 @@
+<div
+  class="drawer-overlay"
+  *ngIf="ticket"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Ticket detail"
+  (click)="onBackdropClick($event)"
+>
+  <aside class="drawer">
+    <div class="drawer-top">
+      <div class="drawer-heading">
+        <span class="drawer-ticket-id">{{ ticket.ticketId }}</span>
+        <h3>{{ ticket.customerName }}</h3>
+        <span class="drawer-subject" *ngIf="ticket.subject" [title]="ticket.subject">
+          {{ ticket.subject }}
+        </span>
+      </div>
+
+      <button class="drawer-close" type="button" (click)="onClose()" title="Close">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Ticket overview</h4>
+      <div class="drawer-grid">
+        <div class="drawer-field" *ngFor="let field of fields">
+          <small>{{ field.label }}</small>
+          <strong [title]="field.value">{{ field.value }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Workflow history</h4>
+      <div class="timeline">
+        <div class="timeline-row" *ngFor="let step of steps" [ngClass]="step.state">
+          <span class="timeline-dot"></span>
+          <div class="timeline-body">
+            <strong>
+              {{ step.title }}
+              <span class="timeline-current" *ngIf="step.state === 'current'">· Current</span>
+            </strong>
+            <span>{{ step.note }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section last" *ngIf="ticket.emailLink">
+      <a class="drawer-link" [href]="ticket.emailLink" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        Open the original email
+      </a>
+    </div>
+  </aside>
+</div>

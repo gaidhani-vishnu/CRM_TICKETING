@@ -1,0 +1,267 @@
+:host {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.kpi-ribbon-wrapper {
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &.collapsed {
+    margin-bottom: 2px;
+  }
+}
+
+.kpi-ribbon-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: auto;
+  padding: 2px 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  gap: 10px;
+}
+
+.ribbon-metrics-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Base pill card styling - floating glowing capsules */
+.kpi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.77rem;
+  padding: 6px 14px;
+  border-radius: 24px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: default;
+
+  &:hover {
+    transform: translateY(-1.5px);
+  }
+
+  .pill-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .pill-label {
+    font-weight: 600;
+  }
+
+  .pill-value {
+    font-weight: 800;
+    font-size: 0.84rem;
+    letter-spacing: -0.2px;
+  }
+
+  /* 1. Open Tickets Card - Indigo / Blue Neon Glass */
+  &.kpi-open {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1.5px solid rgba(96, 165, 250, 0.55);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+
+    .pill-icon { color: #60a5fa; }
+    .pill-label { color: #cbd5e1; }
+    .pill-value { color: #ffffff; }
+    .pill-split {
+      font-size: 0.71rem;
+      font-weight: 500;
+      color: rgba(191, 219, 254, 0.85);
+      margin-left: 2px;
+    }
+
+    &:hover {
+      border-color: #60a5fa;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+  }
+
+  /* 2. Overdue Tickets Card - Glowing Amber / Gold Neon */
+  &.kpi-overdue {
+    background: rgba(26, 18, 11, 0.8);
+    border: 1.5px solid #f59e0b;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(254, 240, 138, 0.2);
+    color: #fef3c7;
+
+    .pill-icon {
+      color: #fbbf24;
+      animation: alertPulse 2s infinite ease-in-out;
+    }
+    .pill-label { color: #fde68a; }
+    .pill-value {
+      color: #ffffff;
+      font-weight: 850;
+      text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    }
+
+    &:hover {
+      border-color: #fbbf24;
+      box-shadow: 0 0 22px rgba(245, 158, 11, 0.6);
+    }
+  }
+
+  /* 3. Closed Tickets Card - Glowing Emerald Green Neon */
+  &.kpi-closed {
+    background: rgba(6, 30, 20, 0.8);
+    border: 1.5px solid #10b981;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(167, 243, 208, 0.2);
+    color: #d1fae5;
+
+    .pill-icon { color: #34d399; }
+    .pill-label { color: #a7f3d0; }
+    .pill-value {
+      color: #ffffff;
+      font-weight: 850;
+      text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+
+    &:hover {
+      border-color: #34d399;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.6);
+    }
+  }
+
+  /* 4. SLA % Card - Vibrant Crimson Badge (or Emerald when healthy) */
+  &.kpi-sla {
+    background: linear-gradient(135deg, rgba(185, 28, 28, 0.95) 0%, rgba(220, 38, 38, 0.9) 100%);
+    border: 1.5px solid #f87171;
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+
+    .pill-icon { color: #ffffff; }
+    .pill-label { color: #fee2e2; }
+    .pill-value {
+      color: #ffffff;
+      font-weight: 850;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+      &.healthy {
+        color: #ffffff;
+      }
+    }
+
+    &:hover {
+      box-shadow: 0 0 24px rgba(220, 38, 38, 0.7);
+    }
+  }
+
+  /* 5. Needs Intervention Card - Glowing Magenta / Violet Neon */
+  &.kpi-intervention {
+    background: rgba(30, 10, 40, 0.8);
+    border: 1.5px solid #d946ef;
+    box-shadow: 0 0 16px rgba(217, 70, 239, 0.38), inset 0 1px 0 rgba(245, 208, 254, 0.2);
+    color: #fae8ff;
+
+    .pill-icon { color: #f472b6; }
+    .pill-label { color: #f5d0fe; }
+    .pill-value {
+      color: #ffffff;
+      font-weight: 850;
+      text-shadow: 0 0 8px rgba(217, 70, 239, 0.6);
+    }
+
+    &:hover {
+      border-color: #f0abfc;
+      box-shadow: 0 0 24px rgba(217, 70, 239, 0.65);
+    }
+  }
+}
+
+/* Hide the old single vertical line dividers */
+.ribbon-divider {
+  display: none;
+}
+
+/* Sleek frosted collapse toggle button */
+.ribbon-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(99, 102, 241, 0.35);
+    border-color: #818cf8;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+    transform: scale(1.06);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+}
+
+@keyframes alertPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.1); }
+}
+
+.kpi-ribbon-collapsed-bar {
+  display: flex;
+  align-items: center;
+
+  .ribbon-expand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    font-size: 0.7rem;
+    font-weight: 650;
+    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.15s ease;
+
+    &:hover {
+      color: #ffffff;
+      background: rgba(30, 41, 59, 0.95);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .expand-icon {
+      color: #818cf8;
+      display: inline-flex;
+    }
+  }
+}
+
+@media (max-width: 1100px) {
+  .kpi-pill .pill-split {
+    display: none;
+  }
+}

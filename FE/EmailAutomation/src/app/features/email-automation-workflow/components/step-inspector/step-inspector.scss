@@ -1,0 +1,248 @@
+/* ======================================================
+   STEP INSPECTOR — fixed panel pinned below the pipeline.
+   Restyled to match the pipeline timeline's premium look;
+   the host still occupies the slot the old wrapper div did.
+   ====================================================== */
+
+:host {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  display: block;
+  padding: 12px;
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid rgba(203, 213, 225, 0.75);
+  background:
+    radial-gradient(140% 100% at 50% 0%, rgba(99, 102, 241, 0.07) 0%, rgba(99, 102, 241, 0) 65%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 -10px 26px -18px rgba(15, 23, 42, 0.5);
+
+  /* accent hairline shared with the pipeline header */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: -1px;
+    height: 1.5px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0) 0%, #8b5cf6 55%, #6366f1 100%);
+    opacity: 0.5;
+  }
+}
+
+.inspector-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  background: linear-gradient(180deg, #ffffff 0%, #fdfdff 100%);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 14px 30px -22px rgba(15, 23, 42, 0.55);
+
+  .inspector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+
+    h4 {
+      margin: 0;
+      font-size: 0.79rem;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      line-height: 1.3;
+      background: linear-gradient(120deg, #0f172a 0%, #334155 50%, #4338ca 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  }
+
+  .inspector-detail {
+    margin: 0;
+    font-size: 0.72rem;
+    color: #475569;
+    line-height: 1.45;
+
+    &.running {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 9px;
+      font-weight: 700;
+      color: #3730a3;
+      border: 1px solid rgba(165, 180, 252, 0.7);
+      background: linear-gradient(180deg, #f5f5ff 0%, #eef2ff 100%);
+
+      .wf-spinner {
+        flex-shrink: 0;
+        width: 11px;
+        height: 11px;
+        border: 2px solid rgba(165, 180, 252, 0.7);
+        border-top-color: #4338ca;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+  }
+
+  .meta-table {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px 2px;
+    border-radius: 10px;
+    font-size: 0.69rem;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: linear-gradient(180deg, #fbfcfd 0%, #f5f7fa 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 9px;
+      border-radius: 7px;
+      transition: background 0.2s ease;
+
+      /* hairline separators instead of a boxed grid */
+      & + .meta-row {
+        box-shadow: inset 0 1px 0 rgba(226, 232, 240, 0.9);
+      }
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.05);
+      }
+
+      .meta-key {
+        flex-shrink: 0;
+        color: #64748b;
+        font-weight: 600;
+        letter-spacing: 0.005em;
+      }
+
+      .meta-val {
+        color: #0f172a;
+        font-weight: 800;
+        text-align: right;
+        word-break: break-word;
+        font-variant-numeric: tabular-nums;
+      }
+    }
+  }
+
+  .inspector-blocked {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 0.69rem;
+    font-weight: 700;
+    color: #be123c;
+    border: 1px solid rgba(251, 113, 133, 0.5);
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  .inspector-primary-action {
+    display: flex;
+
+    .insp-btn.primary {
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      cursor: pointer;
+      background: linear-gradient(135deg, #059669 0%, #047857 55%, #065f46 100%);
+      box-shadow:
+        0 4px 14px -4px rgba(5, 150, 105, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.22s ease, filter 0.22s ease;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          100deg,
+          rgba(255, 255, 255, 0) 35%,
+          rgba(255, 255, 255, 0.28) 50%,
+          rgba(255, 255, 255, 0) 65%
+        );
+        transform: translateX(-100%);
+      }
+
+      &:hover {
+        filter: saturate(1.1);
+        transform: translateY(-1.5px);
+        box-shadow:
+          0 8px 20px -6px rgba(5, 150, 105, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+        &::after {
+          animation: sheenSweep 0.9s ease-out;
+        }
+      }
+
+      &:active {
+        transform: translateY(0) scale(0.985);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #6ee7b7;
+        outline-offset: 2px;
+      }
+    }
+  }
+}
+
+/* ======================================================
+   KEYFRAMES
+   ====================================================== */
+
+@keyframes sheenSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspector-card,
+  .inspector-card *,
+  .inspector-card *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

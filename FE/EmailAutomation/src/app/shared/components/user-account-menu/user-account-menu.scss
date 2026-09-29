@@ -1,0 +1,153 @@
+/*
+  Mirrors <app-user-filter>'s own pill/menu language exactly (white ground,
+  indigo border, 20px radius) so the two sit side by side in a header as one
+  family of controls, not as two different UI systems.
+*/
+:host {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.35);
+}
+
+.account-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 4px;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  .account-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+    max-width: 132px;
+  }
+
+  .account-name {
+    font-size: 0.76rem;
+    font-weight: 750;
+    color: #3730a3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-role {
+    font-size: 0.63rem;
+    font-weight: 600;
+    color: #818cf8;
+  }
+
+  .account-chevron {
+    color: #818cf8;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  &:hover {
+    border-color: #818cf8;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.22);
+    transform: translateY(-1px);
+  }
+
+  &.open {
+    border-color: #6366f1;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.28);
+
+    .account-chevron { transform: rotate(180deg); }
+  }
+
+  &:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1200;
+  min-width: 176px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.06);
+  animation: accountMenuIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .account-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+    text-align: left;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 650;
+    transition: background 0.15s ease;
+
+    svg { flex-shrink: 0; color: #6366f1; }
+
+    &:hover { background: #f8fafc; }
+
+    &.logout {
+      color: #b91c1c;
+      svg { color: #ef4444; }
+
+      &:hover { background: #fef2f2; }
+    }
+
+    &:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: -2px;
+    }
+  }
+}
+
+@keyframes accountMenuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Avatar-only pill for the two busy CRM headers — see the `compact` Input. */
+.account-menu-trigger.compact {
+  padding: 3px;
+  gap: 0;
+
+  .account-labels {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .account-menu-trigger .account-labels { display: none; }
+}

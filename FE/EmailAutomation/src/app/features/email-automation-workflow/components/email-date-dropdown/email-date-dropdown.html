@@ -1,0 +1,81 @@
+<div class="custom-dropdown-container" [class.menu-open]="isOpen">
+
+  <div class="dropdown-wrapper">
+    <!-- Dropdown Trigger Button -->
+    <button
+      type="button"
+      class="dropdown-trigger-btn"
+      [disabled]="isLoading || !dates.length"
+      (click)="toggleDropdown()"
+    >
+      <div class="trigger-left">
+        <svg class="calendar-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+
+        <span class="selected-text" *ngIf="!isLoading && dates.length">
+          {{ getSelectedDisplayDate() }}
+        </span>
+
+        <span class="selected-text loading" *ngIf="isLoading">
+          Loading dates…
+        </span>
+
+        <span class="selected-text empty" *ngIf="!isLoading && !dates.length">
+          No dates
+        </span>
+      </div>
+
+      <svg class="chevron-icon" [class.rotated]="isOpen" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </button>
+
+    <!-- Floating Dropdown Popover Menu -->
+    <div class="dropdown-popover-menu" *ngIf="isOpen && dates.length">
+      <div class="popover-header">
+        <span>Available Dates</span>
+        <span class="count-tag">{{ dates.length }}</span>
+      </div>
+
+      <div class="popover-list">
+        <!-- Back to every report merged — the panel's own default. -->
+        <div
+          class="popover-item"
+          [class.active]="!selectedDate"
+          (click)="selectAllDates()"
+        >
+          <div class="item-left">
+            <span class="status-dot"></span>
+            <span class="item-date">All Dates</span>
+          </div>
+
+          <svg *ngIf="!selectedDate" class="checkmark" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+
+        <div
+          *ngFor="let item of dates; trackBy: trackByDate"
+          class="popover-item"
+          [class.active]="item.date === selectedDate"
+          (click)="selectDate(item)"
+        >
+          <div class="item-left">
+            <span class="status-dot"></span>
+            <span class="item-date">{{ item.displayDate }}</span>
+          </div>
+
+          <svg *ngIf="item.date === selectedDate" class="checkmark" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <span class="error" *ngIf="errorMessage">{{ errorMessage }}</span>
+</div>

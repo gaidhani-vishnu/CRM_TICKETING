@@ -1,0 +1,239 @@
+<!--
+  The backdrop is deliberately inert: only the × closes this popup. A stray click
+  outside used to lose the list mid-read, which is easy to do while comparing a
+  file against the thread behind it.
+-->
+<div class="att-backdrop" *ngIf="threadId">
+  <div class="att-dialog">
+
+    <div class="att-head">
+      <div class="att-title-group">
+        <span class="att-head-icon">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+          </svg>
+        </span>
+
+        <h4>Attachments</h4>
+        <span class="att-thread" title="Thread ID">{{ threadId }}</span>
+        <span class="att-count" *ngIf="!isLoading && files.length">
+          {{ files.length }} {{ files.length === 1 ? 'file' : 'files' }}
+        </span>
+      </div>
+
+      <div class="att-head-actions">
+        <!-- Re-reads the folder: the listing is cached per thread, so this is how
+             attachments saved since it was last opened are picked up. -->
+        <button
+          class="att-icon-btn"
+          type="button"
+          (click)="onRefresh()"
+          [disabled]="isLoading"
+          title="Re-read the folder"
+        >
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+
+        <button class="att-close att-icon-btn" type="button" (click)="onClose()" title="Close">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="att-content">
+
+      <!-- Loading. Skeleton tiles rather than one line of text: the grid appears
+           immediately in the shape the files will take, so the wait reads as the
+           list arriving rather than as an empty dialog. -->
+      <div class="att-grid" *ngIf="isLoading">
+        <div class="att-tile skeleton" *ngFor="let placeholder of [1, 2, 3, 4, 5]">
+          <span class="sk-preview"></span>
+          <span class="sk-line"></span>
+          <span class="sk-line short"></span>
+        </div>
+      </div>
+
+      <div class="att-loading-note" *ngIf="isLoading">
+        <span class="wf-spinner"></span>
+        <span>Reading the thread’s attachment folder…</span>
+      </div>
+
+      <!-- Failed -->
+      <div class="att-error" *ngIf="!isLoading && errorMessage">{{ errorMessage }}</div>
+
+      <!-- Nothing saved: a normal outcome, worded as one -->
+      <div class="att-empty" *ngIf="!isLoading && !errorMessage && files.length === 0">
+        <svg viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" stroke-width="1.5" fill="none">
+          <path d="M4 4h6l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path>
+        </svg>
+        <span>
+          {{ folderExists
+            ? 'This thread has an attachment folder, but there is nothing in it.'
+            : 'No attachments were saved for this thread.' }}
+        </span>
+      </div>
+
+      <!--
+        Laid out as a thumbnail grid rather than a list: these are documents a
+        reviewer recognises by sight — a scan, a challan, a receipt — and the file
+        names the pipeline writes are near-identical, so the picture identifies
+        the file far faster than the name does. Size and date move to the tooltip.
+      -->
+      <div class="att-grid" *ngIf="!isLoading && files.length">
+        <button
+          type="button"
+          class="att-tile"
+          *ngFor="let file of files"
+          [class.is-selected]="isSelected(file)"
+          (click)="select(file)"
+          [title]="tooltipFor(file)"
+        >
+          <span class="att-preview">
+            <!-- Images preview themselves; everything else gets a document glyph
+                 carrying its extension, coloured by type. -->
+            <img
+              class="att-thumb"
+              *ngIf="file.isImage"
+              [src]="thumbUrlFor(file)"
+              [alt]="file.fileName"
+              loading="lazy"
+              decoding="async"
+            />
+
+            <span class="att-doc" *ngIf="!file.isImage" [ngClass]="typeClass(file)">
+              <svg viewBox="0 0 48 60" width="30" height="38" aria-hidden="true">
+                <path
+                  d="M5 1h25l13 13v45a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
+                  fill="#ffffff"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                ></path>
+                <path d="M30 1l13 13H31a1 1 0 0 1-1-1V1z" fill="currentColor" opacity="0.25"></path>
+                <rect x="4" y="30" width="39" height="17" rx="2" fill="currentColor"></rect>
+              </svg>
+              <span class="att-doc-ext">{{ typeLabel(file) }}</span>
+            </span>
+          </span>
+
+          <span class="att-tile-name">{{ file.fileName }}</span>
+        </button>
+      </div>
+
+      <!--
+        The file itself, in the popup. The attachment endpoint serves images,
+        PDFs and text inline, so the browser's own viewer renders them here —
+        the reviewer reads the challan against the thread behind it instead of
+        losing the dashboard to a new tab.
+      -->
+      <div class="att-viewer" *ngIf="!isLoading && selected as file">
+        <div class="att-viewer-bar">
+          <span class="att-viewer-name" [title]="file.fileName">{{ file.fileName }}</span>
+          <span class="att-viewer-meta">{{ typeLabel(file) }} · {{ readableSize(file.sizeBytes) }}</span>
+          <!-- Kept for the cases the frame cannot help with: printing a long PDF,
+               or saving a copy. Not the way a file is read any more. -->
+          <a class="att-viewer-open" [href]="urlFor(file)" target="_blank" rel="noopener">
+            Open in new tab
+          </a>
+        </div>
+
+        <!--
+          The image sits centred as it did; the wheel over it zooms rather than
+          scrolls, and the stage scrolls once the picture is larger than it. A
+          photo of a receipt is usually taken from too far away to read as it
+          arrives.
+        -->
+        <div class="att-image-stage" *ngIf="file.isImage" (wheel)="onImageWheel($event)">
+          <img
+            class="att-viewer-image"
+            [src]="urlFor(file)"
+            [alt]="file.fileName"
+            [style.transform]="'scale(' + imageZoom + ')'"
+          />
+        </div>
+
+        <iframe
+          class="att-viewer-frame"
+          *ngIf="!file.isImage && canPreview(file)"
+          [src]="previewUrl()"
+          [title]="file.fileName"
+        ></iframe>
+
+        <!--
+          A workbook has no in-browser viewer to hand the file to, so the server
+          reads it into rows and it is drawn as a table — a tranche sheet is
+          checked against the payment rows beside it, not opened in Excel.
+        -->
+        <ng-container *ngIf="isSheet(file)">
+          <!-- Sheet tabs, for a workbook that has more than one -->
+          <div class="att-sheet-tabs" *ngIf="sheet && sheet.sheetNames.length > 1">
+            <button
+              type="button"
+              class="att-sheet-tab"
+              *ngFor="let name of sheet.sheetNames"
+              [class.active]="name === sheet.sheetName"
+              (click)="selectSheet(name)"
+            >
+              {{ name }}
+            </button>
+          </div>
+
+          <div class="att-sheet-scroll" *ngIf="sheet && sheet.rows.length">
+            <table class="att-sheet">
+              <thead>
+                <tr>
+                  <th class="att-sheet-rownum">#</th>
+                  <th *ngFor="let cell of sheetHeader">{{ cell }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of sheetBody; let i = index">
+                  <td class="att-sheet-rownum">{{ i + 2 }}</td>
+                  <td *ngFor="let cell of row" [title]="cell">{{ cell }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="att-sheet-note" *ngIf="sheet?.truncated">{{ sheet?.message }}</p>
+
+          <div class="att-viewer-unsupported" *ngIf="isSheetLoading">
+            <span class="wf-spinner"></span>
+            <span>Reading {{ file.fileName }}…</span>
+          </div>
+
+          <div class="att-viewer-unsupported" *ngIf="!isSheetLoading && sheetError">
+            <span>{{ sheetError }}</span>
+          </div>
+
+          <div class="att-viewer-unsupported" *ngIf="!isSheetLoading && !sheetError && sheet && !sheet.rows.length">
+            <span>This sheet is empty.</span>
+          </div>
+        </ng-container>
+
+        <!-- Word and the older binary Excel have nothing that can read them here. -->
+        <div class="att-viewer-unsupported" *ngIf="!isViewable(file)">
+          <svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="1.5" fill="none">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          <span>{{ typeLabel(file) }} files cannot be shown here — open the file to read it.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="att-foot" *ngIf="!isLoading && files.length">
+      <span class="att-foot-summary">
+        {{ files.length }} {{ files.length === 1 ? 'file' : 'files' }} · {{ totalSize() }}
+      </span>
+      <button class="att-done" type="button" (click)="onClose()">Close</button>
+    </div>
+
+  </div>
+</div>

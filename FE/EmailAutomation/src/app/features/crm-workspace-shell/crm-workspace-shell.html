@@ -1,0 +1,23 @@
+<!--
+  The side bar on the left, and exactly one screen beside it. The Email
+  Automation screen is otherwise untouched by this file — it is rendered
+  as-is, the way the router used to render it.
+-->
+<app-side-nav
+  [active]="screen"
+  (navigate)="$event === 'dashboard' ? showDashboard() : showAutomation()"
+></app-side-nav>
+
+<main class="workspace-screen">
+  <app-email-automation-workflow
+    *ngIf="screen === 'automation'"
+    [openThreadId]="pendingThreadId"
+    (switchScreen)="showDashboard()"
+  ></app-email-automation-workflow>
+
+  <app-user-dashboard
+    *ngIf="screen === 'dashboard'"
+    (switchScreen)="showAutomation()"
+    (openInWorkflow)="showTicketInWorkflow($event)"
+  ></app-user-dashboard>
+</main>
