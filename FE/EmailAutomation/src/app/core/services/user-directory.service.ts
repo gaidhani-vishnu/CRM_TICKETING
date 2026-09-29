@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ConfigService } from './config.service';
 import { LoginUser, UserDirectoryEntry } from '../models/auth.model';
+import { MasterUser } from '../models/app-config.model';
 
 /**
  * PRIDE_USER_MASTER's active users, read once from GET api/usermaster/users
@@ -58,9 +59,7 @@ export class UserDirectoryService {
 
     // Config names the mailbox or the name; the user master may still know
     // the person by the mailbox config pairs it with.
-    const configured = this.config.users.find(
-      (user) => this.lower(user.emailId) === key || this.lower(user.name) === key
-    );
+    const configured = this.findConfigured(key);
 
     if (configured) {
       const byEmail = this.users.find(
@@ -73,6 +72,45 @@ export class UserDirectoryService {
     }
 
     return raw;
+  }
+
+  /**
+   * The mailbox for an [Assigned To] value: the value itself when it already
+   * is one, else the user master's email for that username or name, else the
+   * config.json emailId paired with that name. '' when nobody knows it.
+   */
+  emailOf(value: string | null | undefined): string {
+    const raw = (value || '').trim();
+    const key = raw.toLowerCase();
+
+    if (key === '') {
+      return '';
+    }
+
+    if (raw.indexOf('@') !== -1) {
+      return raw;
+    }
+
+    const direct = this.users.find((user) => this.keysOf(user).indexOf(key) !== -1);
+
+    const directEmail = (direct?.email || '').trim();
+
+    if (directEmail) {
+      return directEmail;
+    }
+
+    return (this.findConfigured(key)?.emailId || '').trim();
+  }
+
+  /**
+   * config.json's users[] entry, or its fallbackUser, whose mailbox or name is
+   * the given lower-cased key. fallbackUser lives outside users[], so without
+   * it the CRM head's mailbox (the default owner of a new ticket) has no name.
+   */
+  private findConfigured(key: string): MasterUser | undefined {
+    return [...this.config.users, this.config.fallbackUser].find(
+      (user) => this.lower(user.emailId) === key || this.lower(user.name) === key
+    );
   }
 
   /**

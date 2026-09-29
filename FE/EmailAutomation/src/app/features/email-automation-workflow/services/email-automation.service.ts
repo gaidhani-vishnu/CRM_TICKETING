@@ -75,11 +75,13 @@ export class EmailAutomationService {
    * POST api/emailautomation/acknowledge-tickets — pipeline node 1.
    * Makes sure every thread in the date's report holds a ticket: an existing
    * Open ticket is reused, otherwise a new TKT-{year}-{000000} is raised.
+   * A newly raised ticket's thread gets fallbackUser.emailId in its
+   * [Assigned To] when that is still blank.
    */
   acknowledgeTickets(date: string): Observable<TicketAcknowledgementResponse> {
     return this.http.post<TicketAcknowledgementResponse>(
       `${this.config.apiBaseUrl}/emailautomation/acknowledge-tickets`,
-      { date }
+      { date, defaultAssignee: this.config.fallbackUser.emailId }
     );
   }
 

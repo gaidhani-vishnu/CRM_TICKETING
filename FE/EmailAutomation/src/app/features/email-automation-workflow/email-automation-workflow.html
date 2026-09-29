@@ -488,9 +488,9 @@
 
                 <div class="assigned-list">
                   <div class="assignee-card">
-                    <div class="user-avatar-mini">{{ getInitials(assignedTo, assignedToEmail) }}</div>
+                    <div class="user-avatar-mini">{{ getInitials(assignedToName, assignedToEmail) }}</div>
                     <div class="user-details">
-                      <span class="assignee-name">{{ assignedTo }}</span>
+                      <span class="assignee-name">{{ assignedToName }}</span>
                       <a class="assignee-mail" *ngIf="assignedToEmail" [href]="'mailto:' + assignedToEmail">{{ assignedToEmail }}</a>
                       <span class="assignee-mail missing" *ngIf="!assignedToEmail">no email on file</span>
                     </div>

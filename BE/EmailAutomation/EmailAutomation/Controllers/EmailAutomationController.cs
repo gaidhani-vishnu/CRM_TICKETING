@@ -2560,6 +2560,18 @@ ORDER BY ProjectBankAccountId";
             var tickets = AcknowledgeThreadTickets(
                 threads, reportDate.Year, out serverTime, out closedTickets);
 
+            // A freshly raised ticket starts owned by the configured fallback
+            // user; Unit Match reassigns it later through assign-thread.
+            AssignDefaultOwner(
+                emailDates,
+                tickets.Where(t => t.IsNew).Select(t => t.ThreadId).ToList(),
+                request.DefaultAssignee);
+
+            // A new ticket names the step it now waits on straight away, so the
+            // grid's Pending Step reads "Customer Email Match / Pending" rather
+            // than blank until someone opens the thread.
+            SeedPendingStep(emailDates, tickets.Where(t => t.IsNew).Select(t => t.ThreadId).ToList());
+
             return Ok(new TicketAcknowledgementResponse
             {
                 Date = request.Date,
@@ -3356,7 +3368,7 @@ WHERE  Ticket_ID = @ticketId
         // ── WORKFLOW NODE 2: Customer Email Verification ─────────────
 
         /// <summary>Status parked on the row when the sender is not in the customer master.</summary>
-        private const string TicketedPendingCrmHeadStatus = "Ticketed Pending CRM head";
+        private const string TicketedPendingCrmHeadStatus = "";
 
         // Verdicts written into the per-step match columns. A row already carrying
         // one of these has had that step run, and the UI resumes rather than re-running it.
@@ -4310,6 +4322,77 @@ WHERE  Ticket_ID = @ticketId
                 AssignedTo = assignedTo,
                 Message = $"Thread assigned to {assignedTo}."
             });
+        }
+
+        /// <summary>
+        /// Writes the default owner into [Assigned To] of threads that were just
+        /// ticketed — only where it is still blank, so an owner already chosen
+        /// (by Unit Match or a reviewer) is never overwritten.
+        ///
+        /// Set-based, one UPDATE per table, rather than a ResolveBinding and a
+        /// write per thread: a date carries a hundred-odd threads. A classic
+        /// thread's key only ever matches main_email_receipts.[Thread ID] and a
+        /// loan customer's only the loan table's [Customer Thread ID], so both
+        /// statements can take the whole list.
+        /// </summary>
+        private static void AssignDefaultOwner(
+            List<string> emailDates, List<string> threadKeys, string assignee)
+        {
+            assignee = (assignee ?? string.Empty).Trim();
+
+            if (assignee.Length == 0 || threadKeys.Count == 0)
+            {
+                return;
+            }
+
+            const string blank = "([Assigned To] IS NULL OR LTRIM(RTRIM([Assigned To])) = '')";
+
+            // Stays well under SQL Server's 2100-parameter limit per statement.
+            const int chunkSize = 500;
+
+            using (var connection = new SqlConnection(PrideConnectionString))
+            {
+                connection.Open();
+
+                for (var start = 0; start < threadKeys.Count; start += chunkSize)
+                {
+                    var chunk = threadKeys.Skip(start).Take(chunkSize).ToList();
+
+                    if (emailDates.Count > 0)
+                    {
+                        using (var command = new SqlCommand())
+                        {
+                            command.Connection = connection;
+                            command.CommandTimeout = SqlCommandTimeoutSeconds;
+
+                            var threadIn = AddThreadKeyParameters(command, chunk);
+                            var dateIn = AddEmailDateParameters(command, emailDates);
+
+                            command.CommandText =
+                                $"UPDATE {ReceiptsTable} SET [Assigned To] = @assignee " +
+                                $"WHERE [{ThreadIdColumn}] IN ({threadIn}) AND [Email Date] IN ({dateIn}) AND {blank}";
+                            command.Parameters.Add("@assignee", SqlDbType.VarChar).Value = assignee;
+
+                            ExecuteWithDeadlockRetry(command);
+                        }
+                    }
+
+                    using (var command = new SqlCommand())
+                    {
+                        command.Connection = connection;
+                        command.CommandTimeout = SqlCommandTimeoutSeconds;
+
+                        var threadIn = AddThreadKeyParameters(command, chunk);
+
+                        command.CommandText =
+                            $"UPDATE {LoanReceiptDetailsTable} SET [Assigned To] = @assignee " +
+                            $"WHERE [{CustomerThreadIdColumn}] IN ({threadIn}) AND {blank}";
+                        command.Parameters.Add("@assignee", SqlDbType.VarChar).Value = assignee;
+
+                        ExecuteWithDeadlockRetry(command);
+                    }
+                }
+            }
         }
 
         // ── Thread action status ──────────────────────────────────────
@@ -6715,5 +6798,555 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             return $"{stem} ({Guid.NewGuid():N}){extension}";
         }
 
+        // ── AUTO-CHECK: the hourly unattended pipeline run ───────────
+
+        /// <summary>
+        /// Writes the first step a freshly ticketed thread waits on into
+        /// [Workflow Status], [Action] and [Action Status].
+        ///
+        /// Only a thread whose [Workflow Status] is blank: one that already
+        /// progressed under an earlier ticket keeps its place. A system-raised
+        /// thread has no Customer Email Match on its pipeline, so it starts at
+        /// Email Response. Best-effort per thread — a failed write here must not
+        /// fail the ticket acknowledgement it rides on.
+        /// </summary>
+        private static void SeedPendingStep(List<string> emailDates, List<string> threadIds)
+        {
+            foreach (var threadId in threadIds)
+            {
+                try
+                {
+                    var binding = ResolveBinding(threadId);
+                    var row = ReadThreadRow(emailDates, binding);
+
+                    if (row == null || !IsBlankValue(row.WorkflowStatus))
+                    {
+                        continue;
+                    }
+
+                    var firstStatus = LettersOnly(row.Category) == "nonpaymentsystem"
+                        ? PendingEmailResponse
+                        : PendingCustomerEmailMatch;
+
+                    UpdateReceiptColumns(emailDates, binding, new List<KeyValuePair<string, string>>
+                    {
+                        new KeyValuePair<string, string>("Workflow Status", firstStatus),
+                        new KeyValuePair<string, string>("Action", StepNameOf(firstStatus)),
+                        new KeyValuePair<string, string>("Action Status", ActionStatusPending)
+                    });
+                }
+                catch (Exception)
+                {
+                    // Left blank; the backfill script or the next run fills it.
+                }
+            }
+        }
+
+        /// <summary>The queue: open tickets still waiting on one of the four automatic steps.</summary>
+        private const string AutoCheckQueueProcedure = "dbo.usp_GetAutoCheckQueue";
+
+        /// <summary>Written to [Action Status] when a step stops a thread for a reviewer.</summary>
+        private const string ActionStatusUserIntervention = "User Intervention";
+
+        /// <summary>Written to [Action Status] when the thread is simply waiting on its next step.</summary>
+        private const string ActionStatusPending = "Pending";
+
+        /// <summary>Who ApplyBooking's audit log names when the run fills a row.</summary>
+        private const string AutoCheckUser = "Auto Check";
+
+        /// <summary>
+        /// How long one call keeps picking threads up. Instrument Match and Bank
+        /// Reconciliation open workbooks, so a thread can take several seconds;
+        /// stopping here keeps each call well inside IIS's request timeout and
+        /// lets the caller loop on "remaining" instead.
+        /// </summary>
+        private static readonly TimeSpan AutoCheckTimeBudget = TimeSpan.FromSeconds(90);
+
+        /// <summary>1 while a run is in progress, so two schedulers never work the same threads.</summary>
+        private static int _autoCheckRunning;
+
+        /// <summary>One row of usp_GetAutoCheckQueue.</summary>
+        private sealed class AutoCheckQueueItem
+        {
+            public string ThreadId { get; set; }
+            public string TicketId { get; set; }
+            public string EmailDate { get; set; }
+        }
+
+        /// <summary>
+        /// POST api/emailautomation/auto-check
+        /// Body: { "apiKey": "…", "maxThreads": 10, "skipThreadIds": [] }
+        ///
+        /// Runs the Workflow Pipeline's four automatic checks — Customer Email
+        /// Match, Unit Match, Instrument Match, Bank Reconciliation — for every
+        /// thread with an Open ticket, the way a reviewer pressing "Move to …"
+        /// would, and with the same endpoints: each step below is the action
+        /// method the UI calls, so the Match/Unmatch verdicts, their stamps,
+        /// [Workflow Status], Status and Remark are written exactly as they are
+        /// from the screen. Nothing about a check is decided twice.
+        ///
+        /// A thread is resumed from its [Workflow Status] and taken as far as it
+        /// goes. The first step that needs a reviewer — an unknown sender, more
+        /// than one booking to choose from, an unmatched unit, an incomplete or
+        /// unreconciled payment — parks it: [Action] names that step and
+        /// [Action Status] reads "User Intervention", which also takes it out of
+        /// the queue until a reviewer resolves it in the UI. The run then moves
+        /// on to the next thread.
+        ///
+        /// Called every hour by App_Data/Scripts/run_auto_check.ps1 (Windows Task
+        /// Scheduler), in batches while "remaining" is above zero.
+        /// </summary>
+        [HttpPost]
+        [Route("auto-check")]
+        public IHttpActionResult AutoCheck(AutoCheckRequest request)
+        {
+            var expectedKey = ConfigurationManager.AppSettings["AutoCheckApiKey"];
+
+            if (string.IsNullOrWhiteSpace(expectedKey) ||
+                request == null ||
+                !string.Equals((request.ApiKey ?? string.Empty).Trim(), expectedKey.Trim(), StringComparison.Ordinal))
+            {
+                return Content(HttpStatusCode.Unauthorized, new { message = "Invalid apiKey." });
+            }
+
+            if (Interlocked.CompareExchange(ref _autoCheckRunning, 1, 0) != 0)
+            {
+                return Content(HttpStatusCode.Conflict, new { message = "An auto-check run is already in progress." });
+            }
+
+            try
+            {
+                var maxThreads = request.MaxThreads <= 0 ? 10 : Math.Min(request.MaxThreads, 100);
+                var skip = new HashSet<string>(
+                    (request.SkipThreadIds ?? new List<string>()).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()),
+                    StringComparer.OrdinalIgnoreCase);
+
+                var queue = ReadAutoCheckQueue()
+                    .Where(item => !skip.Contains(item.ThreadId))
+                    .ToList();
+
+                var response = new AutoCheckResponse
+                {
+                    FailedThreadIds = new List<string>(),
+                    Results = new List<AutoCheckThreadResult>()
+                };
+
+                var started = DateTime.UtcNow;
+
+                foreach (var item in queue)
+                {
+                    if (response.Processed >= maxThreads || DateTime.UtcNow - started > AutoCheckTimeBudget)
+                    {
+                        break;
+                    }
+
+                    var result = RunAutoCheckForThread(item);
+
+                    response.Processed++;
+                    response.Results.Add(result);
+
+                    if (result.ActionStatus == ActionStatusUserIntervention)
+                    {
+                        response.Parked++;
+                    }
+                    else if (result.ActionStatus == ActionStatusPending)
+                    {
+                        response.Advanced++;
+                    }
+                    else
+                    {
+                        response.Errors++;
+                        response.FailedThreadIds.Add(item.ThreadId);
+                    }
+                }
+
+                response.Remaining = queue.Count - response.Processed;
+
+                return Ok(response);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _autoCheckRunning, 0);
+            }
+        }
+
+        /// <summary>
+        /// Open tickets whose thread still waits on one of the four automatic
+        /// steps and has not been parked for a reviewer — see
+        /// App_Data/Scripts/auto_check_queue.sql. Oldest ticket first.
+        /// </summary>
+        private static List<AutoCheckQueueItem> ReadAutoCheckQueue()
+        {
+            return ReadWithDeadlockRetry(() =>
+            {
+                var items = new List<AutoCheckQueueItem>();
+
+                using (var connection = new SqlConnection(PrideConnectionString))
+                using (var command = new SqlCommand(AutoCheckQueueProcedure, connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.CommandTimeout = SqlCommandTimeoutSeconds;
+
+                    connection.Open();
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            items.Add(new AutoCheckQueueItem
+                            {
+                                ThreadId = ReadString(reader, "Thread_ID").Trim(),
+                                TicketId = ReadString(reader, "Ticket_ID").Trim(),
+                                EmailDate = ReadString(reader, "EmailDate").Trim()
+                            });
+                        }
+                    }
+                }
+
+                return items;
+            });
+        }
+
+        /// <summary>
+        /// Takes one thread as far as the four automatic steps allow and records
+        /// where it stopped. Never throws: an error is reported on the result and
+        /// nothing is written, so the next hourly run tries the thread again.
+        /// </summary>
+        private AutoCheckThreadResult RunAutoCheckForThread(AutoCheckQueueItem item)
+        {
+            var result = new AutoCheckThreadResult
+            {
+                ThreadId = item.ThreadId,
+                TicketId = item.TicketId,
+                StepsPassed = new List<string>(),
+                ActionStatus = "Error"
+            };
+
+            try
+            {
+                DateTime emailDate;
+
+                if (!TryParseEmailDate(item.EmailDate, out emailDate))
+                {
+                    result.Message = $"Ticket date \"{item.EmailDate}\" could not be read.";
+                    return result;
+                }
+
+                var date = emailDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                var emailDates = ResolveEmailDateValues(date);
+                var binding = ResolveBinding(item.ThreadId);
+                var row = ReadThreadRow(emailDates, binding);
+
+                if (row == null)
+                {
+                    result.Message = $"No {ReceiptsTable} row for {date}.";
+                    return result;
+                }
+
+                var status = (row.WorkflowStatus ?? string.Empty).Trim();
+
+                // A system-raised thread has no Customer Email Match on its
+                // pipeline — the reply is its only step — so it is pointed there
+                // rather than checked against the booking master.
+                if (IsBlankValue(status) && LettersOnly(row.Category) == "nonpaymentsystem")
+                {
+                    status = PendingEmailResponse;
+                    UpdateReceiptColumn(emailDates, binding, "Workflow Status", status);
+                }
+
+                var step = AutoCheckStepOf(status);
+                result.FromStep = step ?? StepNameOf(status);
+
+                string parkedMessage = null;
+                string parkedStep = null;
+
+                // Four steps at most; the guard only stops a status that failed
+                // to move from looping.
+                for (var guard = 0; step != null && guard < 4; guard++)
+                {
+                    string nextStatus;
+                    string message;
+
+                    var passed = RunAutoCheckStep(step, date, row, out nextStatus, out message);
+
+                    if (!passed)
+                    {
+                        // Usually the step itself, but a matched sender with
+                        // several bookings waits on Unit Match, where the UI
+                        // asks which one.
+                        parkedStep = AutoCheckStepOf(nextStatus) ?? step;
+                        parkedMessage = message;
+                        break;
+                    }
+
+                    result.StepsPassed.Add(step);
+                    result.Message = message;
+
+                    var nextStep = AutoCheckStepOf(nextStatus);
+
+                    status = nextStatus;
+
+                    if (nextStep == step)
+                    {
+                        parkedStep = step;
+                        parkedMessage = message;
+                        break;
+                    }
+
+                    step = nextStep;
+
+                    // The next step reads the row as the last one left it.
+                    row = ReadThreadRow(emailDates, binding) ?? row;
+                }
+
+                var parked = parkedStep != null;
+                var stoppedAt = parked ? parkedStep : StepNameOf(status);
+
+                result.StoppedAt = stoppedAt;
+                result.ActionStatus = parked ? ActionStatusUserIntervention : ActionStatusPending;
+                result.WorkflowStatus = parked ? $"Pending {parkedStep}" : status;
+
+                if (parked)
+                {
+                    result.Message = parkedMessage;
+                }
+
+                UpdateReceiptColumns(emailDates, binding, new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("Action", stoppedAt),
+                    new KeyValuePair<string, string>("Action Status", result.ActionStatus)
+                });
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.ActionStatus = "Error";
+                result.Message = ex.Message;
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Runs one step through the same action the UI calls and says whether
+        /// the thread may carry on without a reviewer.
+        /// </summary>
+        /// <param name="nextStatus">[Workflow Status] as the step left it.</param>
+        /// <param name="message">The step's own message — why it passed or stopped.</param>
+        private bool RunAutoCheckStep(
+            string step, string date, EmailReceiptRow row, out string nextStatus, out string message)
+        {
+            nextStatus = $"Pending {step}";
+            string error;
+
+            switch (step)
+            {
+                case CustomerEmailMatchStep:
+                {
+                    var verified = OkContent<CustomerEmailVerificationResponse>(
+                        VerifyCustomerEmail(new CustomerEmailVerificationRequest { Date = date, ThreadId = row.ThreadId }),
+                        out error);
+
+                    if (verified == null)
+                    {
+                        message = error;
+                        return false;
+                    }
+
+                    message = verified.Message;
+
+                    if (!verified.Matched)
+                    {
+                        return false;
+                    }
+
+                    nextStatus = verified.WorkflowStatus;
+
+                    // The UI's rule, made here instead of on screen: one booking
+                    // that fits is written onto a row missing its project or unit;
+                    // more than one needs a reviewer to say which. Parked on Unit
+                    // Match, which is where the UI asks the question.
+                    var candidates = verified.Candidates ?? new List<CustomerBookingMatch>();
+
+                    if (candidates.Count > 1)
+                    {
+                        nextStatus = PendingUnitMatch;
+                        message = $"This customer has {candidates.Count} bookings that fit. " +
+                                  "Choose the one this payment is for in the Project & Unit card.";
+                        return false;
+                    }
+
+                    if (candidates.Count == 1 && (IsBlankValue(row.Project) || IsBlankValue(row.Unit)))
+                    {
+                        ApplyBooking(new BookingSelectionRequest
+                        {
+                            Date = date,
+                            ThreadId = row.ThreadId,
+                            EmailReceiptsId = row.EmailReceiptsId,
+                            Project = candidates[0].ProjectName ?? string.Empty,
+                            SubProject = AutoCheckWingOf(candidates[0]),
+                            Unit = AutoCheckUnitNumberOf(candidates[0].UnitNo),
+                            UpdatedBy = AutoCheckUser
+                        });
+                    }
+
+                    return true;
+                }
+
+                case UnitMatchStep:
+                {
+                    var matched = OkContent<UnitMatchResponse>(
+                        MatchUnit(new UnitMatchRequest { Date = date, ThreadId = row.ThreadId }),
+                        out error);
+
+                    if (matched == null)
+                    {
+                        message = error;
+                        return false;
+                    }
+
+                    message = matched.Message;
+                    nextStatus = matched.WorkflowStatus;
+
+                    return matched.Matched;
+                }
+
+                case InstrumentMatchStep:
+                {
+                    var matched = OkContent<InstrumentMatchResponse>(
+                        MatchInstrument(new InstrumentMatchRequest { Date = date, ThreadId = row.ThreadId }),
+                        out error);
+
+                    if (matched == null)
+                    {
+                        message = error;
+                        return false;
+                    }
+
+                    message = matched.Message;
+                    nextStatus = matched.WorkflowStatus;
+
+                    return matched.AllMatched;
+                }
+
+                case BankReconciliationStep:
+                {
+                    var reconciled = OkContent<BankReconciliationResponse>(
+                        ReconcileBank(new BankReconciliationRequest { Date = date, ThreadId = row.ThreadId }),
+                        out error);
+
+                    if (reconciled == null)
+                    {
+                        message = error;
+                        return false;
+                    }
+
+                    message = reconciled.Message;
+                    nextStatus = reconciled.WorkflowStatus;
+
+                    return reconciled.AllMatched;
+                }
+
+                default:
+                    message = $"\"{step}\" is not an automatic step.";
+                    return false;
+            }
+        }
+
+        /// <summary>Pipeline node name for Customer Email Verification, as [Action] spells it.</summary>
+        private const string CustomerEmailMatchStep = "Customer Email Match";
+
+        /// <summary>
+        /// The automatic step a [Workflow Status] waits on, or null when it waits
+        /// on something the run does not do (Email Response, an agreement stage).
+        /// A blank status is a thread no step has touched yet.
+        /// </summary>
+        private static string AutoCheckStepOf(string workflowStatus)
+        {
+            var status = (workflowStatus ?? string.Empty).Trim();
+
+            if (IsBlankValue(status) || string.Equals(status, PendingCustomerEmailMatch, StringComparison.OrdinalIgnoreCase))
+            {
+                return CustomerEmailMatchStep;
+            }
+
+            if (string.Equals(status, PendingUnitMatch, StringComparison.OrdinalIgnoreCase))
+            {
+                return UnitMatchStep;
+            }
+
+            if (string.Equals(status, PendingInstrumentMatch, StringComparison.OrdinalIgnoreCase))
+            {
+                return InstrumentMatchStep;
+            }
+
+            if (string.Equals(status, PendingBankReconciliation, StringComparison.OrdinalIgnoreCase))
+            {
+                return BankReconciliationStep;
+            }
+
+            return null;
+        }
+
+        /// <summary>"Pending Email Response" → "Email Response"; anything else as it stands.</summary>
+        private static string StepNameOf(string workflowStatus)
+        {
+            var status = (workflowStatus ?? string.Empty).Trim();
+
+            return status.StartsWith("Pending ", StringComparison.OrdinalIgnoreCase)
+                ? status.Substring("Pending ".Length).Trim()
+                : status;
+        }
+
+        /// <summary>
+        /// The payload of an action's 200, or null with the action's own error
+        /// message when it answered anything else — a 404 for a thread with no
+        /// payment rows is a reason to park, not an exception.
+        /// </summary>
+        private static T OkContent<T>(IHttpActionResult actionResult, out string error) where T : class
+        {
+            error = null;
+
+            var ok = actionResult as System.Web.Http.Results.OkNegotiatedContentResult<T>;
+
+            if (ok != null)
+            {
+                return ok.Content;
+            }
+
+            // Content(status, new { message }) is a NegotiatedContentResult of an
+            // anonymous type, so its message is read by name.
+            var content = actionResult?.GetType().GetProperty("Content")?.GetValue(actionResult);
+            var message = content?.GetType().GetProperty("message")?.GetValue(content) as string;
+
+            error = string.IsNullOrWhiteSpace(message) ? "The step did not return a result." : message;
+
+            return null;
+        }
+
+        /// <summary>"A 1603" → "A", else the first word of the sub project — the wing the UI writes.</summary>
+        private static string AutoCheckWingOf(CustomerBookingMatch booking)
+        {
+            var unitNo = (booking.UnitNo ?? string.Empty).Trim();
+            var space = unitNo.IndexOf(' ');
+
+            if (space > 0)
+            {
+                return unitNo.Substring(0, space).Trim();
+            }
+
+            return (booking.SubProjectName ?? string.Empty).Trim()
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault() ?? string.Empty;
+        }
+
+        /// <summary>"A 1603" → "1603"; a UNIT_NO with no space is written as it stands, as the UI does.</summary>
+        private static string AutoCheckUnitNumberOf(string unitNo)
+        {
+            var value = (unitNo ?? string.Empty).Trim();
+            var space = value.IndexOf(' ');
+
+            return space < 0 ? value : value.Substring(space + 1).Trim();
+        }
     }
 }

@@ -1193,6 +1193,14 @@ namespace EmailAutomation.Models
         /// <summary>Report date whose threads should get tickets, e.g. "2026-05-13".</summary>
         [JsonProperty("date")]
         public string Date { get; set; }
+
+        /// <summary>
+        /// Mailbox written into [Assigned To] of every thread that gets a new
+        /// ticket and has no owner yet — config.json's fallbackUser.emailId,
+        /// e.g. "CRMHEAD@PRIDEWORLDCITY.COM". Optional: blank skips the write.
+        /// </summary>
+        [JsonProperty("defaultAssignee")]
+        public string DefaultAssignee { get; set; }
     }
 
     /// <summary>The ticket now held by one thread.</summary>
@@ -1814,6 +1822,93 @@ namespace EmailAutomation.Models
         /// <summary>Oldest first, by [Received Time].</summary>
         [JsonProperty("messages")]
         public List<ThreadMessageRow> Messages { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+    }
+
+    /// <summary>
+    /// Body for POST api/emailautomation/auto-check — the hourly run that walks
+    /// every open ticket through Customer Email Match, Unit Match, Instrument
+    /// Match and Bank Reconciliation without a reviewer pressing anything.
+    /// </summary>
+    public class AutoCheckRequest
+    {
+        /// <summary>Must equal the AutoCheckApiKey appSetting in Web.config.</summary>
+        [JsonProperty("apiKey")]
+        public string ApiKey { get; set; }
+
+        /// <summary>Most threads to process in this call; default 10, capped at 100.</summary>
+        [JsonProperty("maxThreads")]
+        public int MaxThreads { get; set; }
+
+        /// <summary>
+        /// Threads an earlier call of the same run already failed on with an
+        /// error. Passed back by the caller so a thread that keeps throwing is
+        /// not picked first on every batch and the rest of the queue still moves.
+        /// </summary>
+        [JsonProperty("skipThreadIds")]
+        public List<string> SkipThreadIds { get; set; }
+    }
+
+    /// <summary>What one auto-check call did.</summary>
+    public class AutoCheckResponse
+    {
+        /// <summary>Threads looked at in this call.</summary>
+        [JsonProperty("processed")]
+        public int Processed { get; set; }
+
+        /// <summary>Threads that passed every step open to them and now wait on a later one (usually Email Response).</summary>
+        [JsonProperty("advanced")]
+        public int Advanced { get; set; }
+
+        /// <summary>Threads stopped on a step that needs a reviewer — [Action Status] = "User Intervention".</summary>
+        [JsonProperty("parked")]
+        public int Parked { get; set; }
+
+        /// <summary>Threads that threw; nothing was written for them and the next run retries them.</summary>
+        [JsonProperty("errors")]
+        public int Errors { get; set; }
+
+        /// <summary>Queued threads this call did not reach. The caller calls again while this is above zero.</summary>
+        [JsonProperty("remaining")]
+        public int Remaining { get; set; }
+
+        /// <summary>Threads that errored in this call, to send back as skipThreadIds on the next.</summary>
+        [JsonProperty("failedThreadIds")]
+        public List<string> FailedThreadIds { get; set; }
+
+        [JsonProperty("results")]
+        public List<AutoCheckThreadResult> Results { get; set; }
+    }
+
+    /// <summary>One thread's auto-check outcome.</summary>
+    public class AutoCheckThreadResult
+    {
+        [JsonProperty("threadId")]
+        public string ThreadId { get; set; }
+
+        [JsonProperty("ticketId")]
+        public string TicketId { get; set; }
+
+        /// <summary>The step the thread was waiting on when the run picked it up.</summary>
+        [JsonProperty("fromStep")]
+        public string FromStep { get; set; }
+
+        /// <summary>Steps that passed in this run, in order.</summary>
+        [JsonProperty("stepsPassed")]
+        public List<string> StepsPassed { get; set; }
+
+        /// <summary>The step the thread now waits on — written to [Action].</summary>
+        [JsonProperty("stoppedAt")]
+        public string StoppedAt { get; set; }
+
+        /// <summary>"Pending", "User Intervention", or "Error" when nothing could be written.</summary>
+        [JsonProperty("actionStatus")]
+        public string ActionStatus { get; set; }
+
+        [JsonProperty("workflowStatus")]
+        public string WorkflowStatus { get; set; }
 
         [JsonProperty("message")]
         public string Message { get; set; }

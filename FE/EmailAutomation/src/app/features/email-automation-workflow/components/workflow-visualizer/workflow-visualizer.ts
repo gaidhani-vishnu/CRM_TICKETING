@@ -750,7 +750,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
    *
    * A run that comes back incomplete opens the correction popup itself, naming
    * the payments and the fields they are short of: the check is only ever run by
-   * a deliberate click — Move to Instrument Match, or Verify — and the answer to
+   * a matched Unit Match (which now starts it on its own) or Verify — and the answer to
    * "what is missing?" is the form that fixes it.
    *
    * `explicitVerify` says whether this run came from the gate's own Verify
@@ -771,7 +771,10 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       next: (result) => {
         this.instrumentMatch = result;
         this.isMatchingInstrument = false;
-        this.instrumentMatchConfirmed = explicitVerify && result.status === 'DONE';
+        // Client rule, as for Unit Match: a complete Instrument Match needs no
+        // Verify. Only an incomplete one waits on the reviewer.
+        void explicitVerify;
+        this.instrumentMatchConfirmed = result.status === 'DONE';
 
         this.mirrorMatchStamp(result, (stamp) => (this.instrumentMatchStamp = stamp));
 
@@ -783,6 +786,14 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
 
         if (result.status !== 'DONE') {
           this.openInstrumentEdit(row);
+          return;
+        }
+
+        // Complete: straight on to Bank Reconciliation, no "Move to Bank
+        // Reconciliation" click. An all-duplicate thread skips it and its
+        // Email Response opens on its own, as before.
+        if (!result.skipsNextStep) {
+          this.startBankReconciliation();
         }
       },
       error: () => {
@@ -903,7 +914,11 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       next: (result) => {
         this.unitMatch = result;
         this.isMatchingUnit = false;
-        this.unitMatchConfirmed = explicitVerify && result.status === 'DONE';
+        // Client rule: a matched unit needs no Verify — the match is the
+        // confirmation. Only an unmatched unit waits on the reviewer (Verify /
+        // Edit & Save, unchanged). `explicitVerify` no longer decides this.
+        void explicitVerify;
+        this.unitMatchConfirmed = result.status === 'DONE';
 
         // The backend parks an unmatched unit by writing the Remark cell; mirror
         // it onto the row so the receipts card/table pill updates without a reload.
@@ -929,6 +944,13 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
         }
 
         this.repaint();
+
+        // ...and a payment thread goes straight on to Instrument Match, with
+        // no "Move to Instrument Match" click in between. A non-payment thread
+        // has no Instrument Match; its next step opens on its own as before.
+        if (result.status === 'DONE' && !this.isNonPaymentThread) {
+          this.startInstrumentMatch();
+        }
       },
       error: () => {
         this.isMatchingUnit = false;
@@ -1141,7 +1163,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     }
 
     if (!this.isUnitMatchStarted) {
-      return 'Sender verified. Use "Move to Unit Match" on the previous step to start.';
+      return 'Sender verified. Starting Unit Match…';
     }
 
     return this.isMatchingUnit ? 'Matching the unit against the booking master…' : this.unitMatch?.detail;
@@ -1160,7 +1182,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     }
 
     return this.instrumentMatch?.status === 'DONE'
-      ? 'All payments matched. Use "Move to Bank Reconciliation" on the previous step to start.'
+      ? 'All payments matched. Starting Bank Reconciliation…'
       : 'Stopped: not every payment was found in the bank statements.';
   }
 
@@ -1201,6 +1223,11 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
         'Project': row.project || '—',
       });
 
+      // A stored Match was confirmed when it was written — by a reviewer's
+      // Verify, or by the hourly auto-check run, which treats a match as
+      // settled. Asking for Verify again would re-open work already done.
+      this.unitMatchConfirmed = unitVerdict === 'Match';
+
       // A thread that went through Unit Match before this column existed has a
       // verdict but no owner. Settle it now, from the same verdict — the rule
       // does not depend on anything the run held in memory.
@@ -1215,6 +1242,16 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       if (unitVerdict === 'Match' && !this.isNonPaymentThread) {
         this.resumePaymentSteps(row);
       }
+    } else if (!unitVerdict && emailVerdict === 'Match') {
+      // Sender matched but Unit Match never ran: run it now rather than wait
+      // behind a "Move to Unit Match" button that no longer exists. Deferred
+      // to after the thread switch has finished painting — this is called in
+      // the middle of that reset.
+      setTimeout(() => {
+        if (this.selectedRow?.threadId === row.threadId && !this.isUnitMatchStarted) {
+          this.startUnitMatch();
+        }
+      });
     }
 
     this.repaint();
@@ -1251,7 +1288,12 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       // A blank on any payment means the step has not been run for this thread,
       // or was run before a payment was added. Either way there is no verdict to
       // replay and node 4 stays PENDING.
+      //
+      // Unit Match has already matched, though, and a matched unit goes
+      // straight on to Instrument Match — so it is run now rather than left
+      // waiting behind a "Move to Instrument Match" button that no longer exists.
       if (verdicts.some((verdict) => verdict !== 'match' && verdict !== 'unmatch')) {
+        this.startInstrumentMatch();
         return;
       }
 
@@ -1286,6 +1328,9 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       }
 
       this.isInstrumentMatchStarted = true;
+      // Same as Unit Match in resumeFromStoredVerdicts(): a stored complete
+      // verdict is a confirmed one.
+      this.instrumentMatchConfirmed = allComplete;
       this.instrumentMatch = {
         stepId: 'node-4',
         status: allComplete ? 'DONE' : 'WAITING',
@@ -1327,7 +1372,13 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       (payment) => (payment.bankRecoMatch || '').trim().toLowerCase() === 'match'
     );
 
+    // Not (all) reconciled yet — never run, or run and short. Instrument Match
+    // is complete, and a complete Instrument Match goes straight on, so the
+    // step is run now rather than left behind a "Move to Bank Reconciliation"
+    // button that no longer exists. An unreconciled result then shows its own
+    // User Intervention gate, as it always has.
     if (reconciled.length !== newEntries.length) {
+      this.startBankReconciliation();
       return;
     }
 
@@ -1336,6 +1387,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       'Bank Reco Match = "Match". Step skipped.';
 
     this.isBankReconciliationStarted = true;
+    this.bankReconciliationConfirmed = true;
     this.bankReconciliation = {
       stepId: 'node-5',
       status: 'DONE',
@@ -1856,6 +1908,12 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
         this.mirrorWorkflowStatus(row, result);
 
         this.repaint();
+
+        // Client rule: a matched sender goes straight on to Unit Match, with
+        // no "Move to Unit Match" click. An unmatched one keeps its gate.
+        if (result.status === 'DONE') {
+          this.startUnitMatch();
+        }
       },
       error: () => {
         this.isVerifying = false;
@@ -3497,13 +3555,12 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
   }
 
   private emailVerificationAction(isEmailVerified: boolean): WorkflowNode['primaryAction'] {
-    if (!isEmailVerified) {
-      return undefined;
-    }
-
-    return this.isUnitMatchStarted
-      ? undefined
-      : { id: 'start-unit-match', label: 'Move to Unit Match →', kind: 'advance' };
+    // Client rule: a verified sender jumps straight to Unit Match (see
+    // runCustomerEmailVerification / resumeFromStoredVerdicts), so this card
+    // never offers the click-through. The 'start-unit-match' handler in
+    // onPrimaryAction stays, so re-enabling the button is a one-line change.
+    void isEmailVerified;
+    return undefined;
   }
 
   private emailVerificationGate(isEmailVerified: boolean): WorkflowNodeAction[] | undefined {
@@ -3515,6 +3572,13 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
   }
 
   private unitMatchAction(isUnitMatched: boolean, isUnitMatchConfirmed: boolean): WorkflowNode['primaryAction'] {
+    // Client rule: a matched unit jumps straight to Instrument Match (see
+    // runUnitMatch / resumePaymentSteps), so this card never offers the
+    // click-through. Kept as a method so re-enabling it is a one-line change.
+    if (isUnitMatched) {
+      return undefined;
+    }
+
     // A non-payment thread has nowhere to advance to: the Email Response step
     // below it opens on its own once the unit is matched.
     //
@@ -3572,6 +3636,13 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     isInstrumentMatched: boolean,
     isInstrumentMatchConfirmed: boolean
   ): WorkflowNode['primaryAction'] {
+    // Client rule: a complete Instrument Match jumps straight to Bank
+    // Reconciliation (see runInstrumentMatch / resumeBankReconciliation), so
+    // this card never offers the click-through.
+    if (isInstrumentMatched) {
+      return undefined;
+    }
+
     if (!isInstrumentMatched || !isInstrumentMatchConfirmed) {
       return undefined;
     }

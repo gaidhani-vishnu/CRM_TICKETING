@@ -36,6 +36,7 @@ import { TicketAcknowledgementItem } from './models/ticket-acknowledgement.model
 import { DashboardSummary, emptyDashboardSummary } from '../user-dashboard/models/user-dashboard.model';
 import { UserDashboardService } from '../user-dashboard/services/user-dashboard.service';
 import { AssigneeFilterService } from '../../core/services/assignee-filter.service';
+import { UserDirectoryService } from '../../core/services/user-directory.service';
 import { ALL_USERS, UserFilterOption } from '../../shared/models/user-filter.model';
 
 @Component({
@@ -147,11 +148,18 @@ export class EmailAutomationWorkflow implements OnInit, OnDestroy {
     return (this.selectedRow?.assignedTo || '').trim();
   }
 
-  /** That owner's mailbox, from the master users list. '' when it has none. */
-  get assignedToEmail(): string {
-    const name = this.assignedTo;
+  /**
+   * The owner's name for the card. [Assigned To] holds either a name (Unit
+   * Match) or a mailbox (a new ticket's default owner), so both are resolved
+   * through the user directory — CRMHEAD@PRIDEWORLDCITY.COM shows as NAMRATA.
+   */
+  get assignedToName(): string {
+    return this.userDirectory.displayName(this.assignedTo);
+  }
 
-    return name ? this.config.getEmailForUser(name) : '';
+  /** That owner's mailbox — the stored value itself when it is one. '' when unknown. */
+  get assignedToEmail(): string {
+    return this.userDirectory.emailOf(this.assignedTo);
   }
 
   /** Total loaded rows count for statistics badge. */
@@ -839,7 +847,8 @@ export class EmailAutomationWorkflow implements OnInit, OnDestroy {
     private readonly api: EmailAutomationService,
     private readonly cdr: ChangeDetectorRef,
     private readonly dashboardService: UserDashboardService,
-    private readonly assigneeFilter: AssigneeFilterService
+    private readonly assigneeFilter: AssigneeFilterService,
+    private readonly userDirectory: UserDirectoryService
   ) {}
 
   /** Controls expandable accordion for Message Body (default collapsed = false) */
