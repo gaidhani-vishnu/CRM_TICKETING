@@ -10,7 +10,15 @@ import { isListedCategory } from '../../email-automation-workflow/models/receipt
 import { TicketAcknowledgementItem } from '../../email-automation-workflow/models/ticket-acknowledgement.model';
 import { EmailAutomationService } from '../../email-automation-workflow/services/email-automation.service';
 import {
+  ACKNOWLEDGEMENT_STEP,
+  ACTION_COLUMNS,
+  ActionColumnKey,
+  BANK_RECONCILIATION_STEP,
   DashboardSummary,
+  EMAIL_RESPONSE_STEP,
+  EMAIL_VERIFICATION_STEP,
+  FINAL_EMAIL_RESPONSE_STEP,
+  INSTRUMENT_MATCH_STEP,
   DashboardTicket,
   DonutSlice,
   IntentCount,
@@ -19,10 +27,15 @@ import {
   MatrixCell,
   MatrixRow,
   SlaBucket,
+  STEP_ORDER,
   StageKey,
+  StepRow,
   WORKFLOW_STAGES,
   emptyDashboardSummary,
+  isAgreementRoute,
+  workflowRoute,
 } from '../models/user-dashboard.model';
+import { AGREEMENT_STEPS } from '../../email-automation-workflow/models/agreement-step.model';
 
 /** Seconds in the two warning windows the SLA band splits "on track" into. */
 const FOUR_HOURS = 4 * 60 * 60;
@@ -303,6 +316,10 @@ export class UserDashboardService {
 
     const workflowStatus = ((row && row.workflowStatus) || '').trim();
     const stage = this.resolveStage(workflowStatus);
+    // The raw sub-intent, not the matrix's fallback for a blank one: the
+    // pipeline tests the column as stored when it decides on the agreement
+    // stages, and the route here has to be the route it draws.
+    const route = workflowRoute(row.category, row.intent, row.subIntent);
 
     return {
       threadId: ticket.threadId,
@@ -317,6 +334,9 @@ export class UserDashboardService {
       stage,
       stageLabel: this.stageLabel(stage),
       workflowStatus,
+      step: this.resolveStep(workflowStatus, row, route),
+      route,
+      actionColumn: this.resolveActionColumn(row && row.actionStatus),
       actionStatus: this.clean(row && row.actionStatus, ''),
 
       ticketStatus: this.clean(ticket.ticketStatus, 'Open'),
@@ -359,6 +379,82 @@ export class UserDashboardService {
     const match = WORKFLOW_STAGES.find((s) => s.key === stage);
 
     return match ? match.label : 'Ack';
+  }
+
+  /**
+   * The matrix's third level: the step the thread is waiting on.
+   *
+   * [Workflow Status] is written as one phrase — "Pending Unit Match" — so the
+   * step is what is left once the state in front is taken off, the same way
+   * the Email Receipts grid reads it (pendingStep() in email-receipts-table.ts).
+   * A blank one means only the ticket has been raised.
+   *
+   * That name is then brought into line with the thread's own route, because
+   * the column does not always spell a step the way its pipeline card does:
+   *
+   *   • "Customer Email Match" is the card titled Customer Email Verification.
+   *   • "Email Response" on a payment thread is its Final Email Response — the
+   *     plain reply is not a step of that route.
+   *   • "Instrument Match" / "Bank Reconciliation" on a non-payment thread is a
+   *     value left from before those threads had a route of their own; the
+   *     pipeline shows such a thread at its first unfinished agreement stage,
+   *     or at the reply (alignNonPaymentStatus() in workflow-visualizer.ts),
+   *     and so does this.
+   *
+   * A value none of that recognises is kept whole rather than dropped from the
+   * matrix, and gets a row of its own after the route.
+   */
+  private resolveStep(workflowStatus: string, row: EmailReceiptRow, route: string[]): string {
+    if (workflowStatus === '') {
+      return ACKNOWLEDGEMENT_STEP;
+    }
+
+    const leading = /^pending\s+(\S.*)$/i.exec(workflowStatus);
+    let step = leading ? leading[1].trim() : workflowStatus;
+
+    if (step.toLowerCase() === 'customer email match') {
+      step = EMAIL_VERIFICATION_STEP;
+    }
+
+    if (route.indexOf(step) !== -1) {
+      return step;
+    }
+
+    if (step === EMAIL_RESPONSE_STEP && route.indexOf(FINAL_EMAIL_RESPONSE_STEP) !== -1) {
+      return FINAL_EMAIL_RESPONSE_STEP;
+    }
+
+    const isMoneyStep = step === INSTRUMENT_MATCH_STEP || step === BANK_RECONCILIATION_STEP;
+
+    if (isMoneyStep && route.indexOf(EMAIL_RESPONSE_STEP) !== -1) {
+      const verdicts = row.agreementSteps || {};
+      const pending = isAgreementRoute(row.category, row.intent, row.subIntent)
+        ? AGREEMENT_STEPS.find(
+            (stage) => (verdicts[stage.stepKey] || '').trim().toLowerCase() !== 'match'
+          )
+        : undefined;
+
+      return pending ? pending.title : EMAIL_RESPONSE_STEP;
+    }
+
+    return step;
+  }
+
+  /**
+   * Which matrix column an [Action Status] counts under.
+   *
+   * Processing takes whatever the other three do not claim: 'Pending', a blank
+   * — the column is only written once a thread has been opened in the workflow
+   * screen — and any value this does not recognise, so every open ticket lands
+   * in exactly one column and the row totals add up to the open count.
+   */
+  private resolveActionColumn(actionStatus: string | undefined): ActionColumnKey {
+    const status = (actionStatus || '').trim().toLowerCase();
+    const match = ACTION_COLUMNS.find((column) =>
+      column.statuses.some((value) => value.toLowerCase() === status)
+    );
+
+    return match ? match.key : 'processing';
   }
 
   /**
@@ -421,16 +517,19 @@ export class UserDashboardService {
 
     const overdueCount = open.filter((t) => t.isOverdue).length;
 
-    const byCategory: { [name: string]: number } = {};
+    const byIntent: { [name: string]: number } = {};
     const byStatus: { [status: string]: number } = {};
-    const groupsByCategory: { [name: string]: { [subIntent: string]: MatrixRow } } = {};
+    const groupsByIntent: { [name: string]: { [subIntent: string]: MatrixRow } } = {};
 
     let paymentCount = 0;
     const buckets = { onTrack: 0, due8: 0, due4: 0, breach: 0 };
 
     for (const ticket of open) {
-      byCategory[ticket.category] = (byCategory[ticket.category] || 0) + 1;
+      byIntent[ticket.intent] = (byIntent[ticket.intent] || 0) + 1;
 
+      // The Open tile's Payment / Non-Payment split is the one figure still
+      // read off Category: it is a property of the thread's kind, not of what
+      // the customer was asking for.
       if (ticket.category.toLowerCase().indexOf('non-payment') === -1 &&
           ticket.category.toLowerCase().indexOf('payment') !== -1) {
         paymentCount++;
@@ -442,33 +541,38 @@ export class UserDashboardService {
 
       this.bucket(ticket, buckets);
 
-      if (!groupsByCategory[ticket.category]) {
-        groupsByCategory[ticket.category] = {};
+      if (!groupsByIntent[ticket.intent]) {
+        groupsByIntent[ticket.intent] = {};
       }
 
-      const rows = groupsByCategory[ticket.category];
+      const rows = groupsByIntent[ticket.intent];
 
       if (!rows[ticket.subIntent]) {
-        rows[ticket.subIntent] = this.emptyMatrixRow(ticket.category, ticket.subIntent);
+        rows[ticket.subIntent] = this.emptyMatrixRow(ticket.intent, ticket.subIntent);
       }
 
       const row = rows[ticket.subIntent];
-      const cell = row.cells.find((c) => c.stage === ticket.stage);
 
-      if (cell) {
-        cell.total++;
-        if (ticket.isOverdue) {
-          cell.overdue++;
+      // The whole route goes in, not just the step this ticket is on, so each
+      // step can be numbered by its place in the workflow (see toGroups(),
+      // which then drops the steps nobody is waiting at). Tickets of one
+      // sub-intent can run different routes — a system-raised one beside a
+      // customer's — and the rows are then the union of them.
+      for (const step of ticket.route.concat([ticket.step])) {
+        if (!row.steps.some((s) => s.step === step)) {
+          row.steps.push(this.emptyStepRow(ticket.intent, ticket.subIntent, step));
         }
       }
 
-      row.total.total++;
-      if (ticket.isOverdue) {
-        row.total.overdue++;
-      }
+      const stepRow = row.steps.find((s) => s.step === ticket.step) as StepRow;
+
+      // Counted once, on the step the ticket is on, and carried up to its
+      // sub-intent — so a sub-intent line is always the sum of its step lines.
+      this.count(stepRow, ticket);
+      this.count(row, ticket);
     }
 
-    const intents = this.toIntentCounts(byCategory, open.length);
+    const intents = this.toIntentCounts(byIntent, open.length);
 
     return {
       openCount: open.length,
@@ -486,8 +590,25 @@ export class UserDashboardService {
         0
       ),
       slaBuckets: this.toSlaBuckets(buckets, open.length),
-      groups: this.toGroups(groupsByCategory, byCategory, intents),
+      groups: this.toGroups(groupsByIntent, byIntent, intents),
     };
+  }
+
+  /** Adds one ticket to a matrix line: its action-status cell, and the line's total. */
+  private count(line: { cells: MatrixCell[]; total: MatrixCell }, ticket: DashboardTicket): void {
+    const cell = line.cells.find((c) => c.column === ticket.actionColumn);
+
+    if (cell) {
+      cell.total++;
+      if (ticket.isOverdue) {
+        cell.overdue++;
+      }
+    }
+
+    line.total.total++;
+    if (ticket.isOverdue) {
+      line.total.overdue++;
+    }
   }
 
   /**
@@ -574,39 +695,28 @@ export class UserDashboardService {
   }
 
   /**
-   * Categories as legend rows, biggest first.
+   * Intents as legend rows, biggest first.
    *
-   * Capped at three coloured slots plus a fourth, de-emphasised one: only the
-   * first three categorical slots clear the palette's all-pairs contrast gates,
-   * and a donut is read by comparing any arc against any other. A fourth hue is
-   * not available to spend here — the palette's slot 4 is yellow, and yellow
-   * beside slot 2's orange fails the normal-vision separation floor outright
-   * (ΔE 13.7 against a floor of 15), which no amount of direct labelling
-   * excuses.
+   * Every intent gets a row and an arc of its own — nothing is folded into an
+   * 'Others'. The Intent table right below lists every intent by name, and a
+   * legend that stopped at three and summed the rest left the two cards
+   * disagreeing: 'Document' was a row in the table and nowhere in the donut.
    *
-   * So the fourth arc stays grey — but it is named. Folding is only honest when
-   * there is a tail to fold: with four categories the fourth arc *is* one
-   * category, and calling it 'Others' hides a name the reader is looking for
-   * while the Intent table right below it spells that same name out. One folded
-   * category therefore keeps its own label and only two or more become 'Others'.
+   * Only the first three are coloured, though. Those are the categorical slots
+   * that clear the palette's all-pairs contrast gates, and a fourth hue is not
+   * available to spend here — the palette's slot 4 is yellow, and yellow beside
+   * slot 2's orange fails the normal-vision separation floor outright (ΔE 13.7
+   * against a floor of 15). Every intent past the third therefore wears the
+   * grey slot 0, the same one its row wears in the table; they are told apart
+   * by the gap between their arcs and by their names in the legend.
    */
   private toIntentCounts(
-    byCategory: { [name: string]: number },
+    byIntent: { [name: string]: number },
     total: number
   ): IntentCount[] {
-    const ordered = Object.keys(byCategory)
-      .map((intent) => ({ intent, total: byCategory[intent] }))
+    const parts = Object.keys(byIntent)
+      .map((intent) => ({ intent, total: byIntent[intent] }))
       .sort((a, b) => b.total - a.total || a.intent.localeCompare(b.intent));
-
-    const top = ordered.slice(0, 3);
-    const folded = ordered.slice(3);
-    const foldedTotal = folded.reduce((sum, item) => sum + item.total, 0);
-
-    // One category in the fold is not a tail — it is that category, so it is
-    // named. Two or more genuinely are 'Others'.
-    const foldedName = folded.length === 1 ? folded[0].intent : 'Others';
-
-    const parts = foldedTotal > 0 ? top.concat([{ intent: foldedName, total: foldedTotal }]) : top;
 
     return parts.map((part, index) => ({
       intent: part.intent,
@@ -665,15 +775,16 @@ export class UserDashboardService {
   }
 
   /**
-   * The matrix, as intent blocks each spanning their sub-intent rows.
+   * The matrix, as intent blocks each holding their sub-intent rows, each of
+   * those holding the steps its tickets are on.
    *
    * Blocks follow the donut's order and carry its colour slot, so the tag
    * beside an intent name is the same colour as its arc — the two views of
    * the same split never disagree.
    */
   private toGroups(
-    groupsByCategory: { [name: string]: { [subIntent: string]: MatrixRow } },
-    byCategory: { [name: string]: number },
+    groupsByIntent: { [name: string]: { [subIntent: string]: MatrixRow } },
+    byIntent: { [name: string]: number },
     intents: IntentCount[]
   ): IntentGroup[] {
     const slotOf: { [name: string]: number } = {};
@@ -682,39 +793,51 @@ export class UserDashboardService {
       slotOf[intent.intent] = intent.slot;
     }
 
-    return Object.keys(groupsByCategory)
-      .map((category) => {
-        const rowsMap = groupsByCategory[category];
+    return Object.keys(groupsByIntent)
+      .map((intent) => {
+        const rowsMap = groupsByIntent[intent];
         const rows = Object.keys(rowsMap)
           .map((subIntent) => rowsMap[subIntent])
           .sort((a, b) => b.total.total - a.total.total || a.subIntent.localeCompare(b.subIntent));
 
-        const cells: MatrixCell[] = WORKFLOW_STAGES.map((stage) => {
-          let stageTotal = 0;
-          let stageOverdue = 0;
+        for (const row of rows) {
+          row.steps.sort(
+            (a, b) => this.stepRank(a.step) - this.stepRank(b.step) || a.step.localeCompare(b.step)
+          );
+
+          // Numbered across the whole route first, so a step keeps the number
+          // its pipeline card carries; only then are the steps nobody is on
+          // dropped. A dropped row is all zeros, so no total moves.
+          row.steps.forEach((step, index) => (step.number = index + 1));
+          row.steps = row.steps.filter((step) => step.total.total > 0);
+        }
+
+        const cells: MatrixCell[] = ACTION_COLUMNS.map((column) => {
+          let columnTotal = 0;
+          let columnOverdue = 0;
           for (const r of rows) {
-            const c = r.cells.find((cell) => cell.stage === stage.key);
+            const c = r.cells.find((cell) => cell.column === column.key);
             if (c) {
-              stageTotal += c.total;
-              stageOverdue += c.overdue;
+              columnTotal += c.total;
+              columnOverdue += c.overdue;
             }
           }
-          return { stage: stage.key, total: stageTotal, overdue: stageOverdue };
+          return { column: column.key, total: columnTotal, overdue: columnOverdue };
         });
 
         const total: MatrixCell = {
-          stage: 'ALL',
+          column: 'ALL',
           total: rows.reduce((acc, r) => acc + r.total.total, 0),
           overdue: rows.reduce((acc, r) => acc + r.total.overdue, 0),
         };
 
         return {
-          intent: category,
-          openCount: byCategory[category] || 0,
-          // A category the donut could not colour takes the grey slot 0 — the
+          intent,
+          openCount: byIntent[intent] || 0,
+          // An intent the donut could not colour takes the grey slot 0 — the
           // one the donut's fourth arc wears. The matrix never folds, so every
-          // category keeps its own block whether or not it got a hue.
-          slot: slotOf[category] === undefined ? 0 : slotOf[category],
+          // intent keeps its own block whether or not it got a hue.
+          slot: slotOf[intent] === undefined ? 0 : slotOf[intent],
           cells,
           total,
           rows,
@@ -723,12 +846,35 @@ export class UserDashboardService {
       .sort((a, b) => b.openCount - a.openCount || a.intent.localeCompare(b.intent));
   }
 
+  /** Where a step falls in the pipeline; one the pipeline does not list goes last. */
+  private stepRank(step: string): number {
+    const index = STEP_ORDER.indexOf(step);
+
+    return index === -1 ? STEP_ORDER.length : index;
+  }
+
+  private emptyCells(): MatrixCell[] {
+    return ACTION_COLUMNS.map((column) => ({ column: column.key, total: 0, overdue: 0 }));
+  }
+
   private emptyMatrixRow(intent: string, subIntent: string): MatrixRow {
     return {
       intent,
       subIntent,
-      cells: WORKFLOW_STAGES.map((stage) => ({ stage: stage.key, total: 0, overdue: 0 })),
-      total: { stage: 'ALL' as const, total: 0, overdue: 0 } as MatrixCell,
+      cells: this.emptyCells(),
+      total: { column: 'ALL', total: 0, overdue: 0 },
+      steps: [],
+    };
+  }
+
+  private emptyStepRow(intent: string, subIntent: string, step: string): StepRow {
+    return {
+      intent,
+      subIntent,
+      step,
+      number: 0,
+      cells: this.emptyCells(),
+      total: { column: 'ALL', total: 0, overdue: 0 },
     };
   }
 

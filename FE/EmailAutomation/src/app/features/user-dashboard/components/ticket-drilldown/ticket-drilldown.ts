@@ -9,11 +9,12 @@ import {
 } from '@angular/core';
 
 import {
+  ACTION_COLUMNS,
+  ActionColumn,
+  ActionColumnKey,
   DashboardTicket,
   DrillRequest,
-  StageKey,
-  WORKFLOW_STAGES,
-  WorkflowStage,
+  STEP_ORDER,
 } from '../../models/user-dashboard.model';
 
 /**
@@ -47,10 +48,11 @@ export class TicketDrilldown implements OnChanges {
 
   search = '';
   subIntentFilter = 'ALL';
-  stageFilter: StageKey | 'ALL' = 'ALL';
+  stepFilter = 'ALL';
+  columnFilter: ActionColumnKey | 'ALL' = 'ALL';
   slaFilter = 'ALL';
 
-  /** Tickets in the clicked intent, before the panel's own four filters. */
+  /** Tickets in the clicked intent, before the panel's own five filters. */
   private scoped: DashboardTicket[] = [];
 
   /** What the table renders. */
@@ -59,13 +61,17 @@ export class TicketDrilldown implements OnChanges {
   /** Sub-intents present in the scoped intent, for the select. */
   subIntents: string[] = [];
 
-  readonly stages: WorkflowStage[] = WORKFLOW_STAGES;
+  /** Steps a ticket of the scoped intent is on, in pipeline order, for the select. */
+  steps: string[] = [];
+
+  readonly columns: ActionColumn[] = ACTION_COLUMNS;
 
   ngOnChanges(changes: SimpleChanges): void {
     // A new request re-seeds the filters from what was actually clicked.
     if (changes['request'] && this.request) {
       this.subIntentFilter = this.request.subIntent;
-      this.stageFilter = this.request.stage;
+      this.stepFilter = this.request.step;
+      this.columnFilter = this.request.column;
       this.slaFilter = 'ALL';
       this.search = '';
     }
@@ -84,8 +90,13 @@ export class TicketDrilldown implements OnChanges {
     this.applyFilters();
   }
 
-  onStageChange(value: string): void {
-    this.stageFilter = value as StageKey | 'ALL';
+  onStepChange(value: string): void {
+    this.stepFilter = value;
+    this.applyFilters();
+  }
+
+  onColumnChange(value: string): void {
+    this.columnFilter = value as ActionColumnKey | 'ALL';
     this.applyFilters();
   }
 
@@ -97,7 +108,8 @@ export class TicketDrilldown implements OnChanges {
   clearFilters(): void {
     this.search = '';
     this.subIntentFilter = 'ALL';
-    this.stageFilter = 'ALL';
+    this.stepFilter = 'ALL';
+    this.columnFilter = 'ALL';
     this.slaFilter = 'ALL';
     this.applyFilters();
   }
@@ -114,33 +126,56 @@ export class TicketDrilldown implements OnChanges {
     return ticket.ticketId;
   }
 
-  trackByStageOption(index: number, stage: WorkflowStage): string {
-    return stage.key;
+  trackByColumnOption(index: number, column: ActionColumn): string {
+    return column.key;
+  }
+
+  /** The column heading a ticket's [Action Status] counts under, e.g. 'User Edit'. */
+  columnLabel(ticket: DashboardTicket): string {
+    const match = this.columns.find((column) => column.key === ticket.actionColumn);
+
+    return match ? match.label : '';
   }
 
   // ── Filtering ───────────────────────────────────────────────
 
-  /** Narrows to the clicked intent and collects the sub-intents inside it. */
+  /** Narrows to the clicked intent and collects the sub-intents and steps inside it. */
   private rescope(): void {
     const request = this.request;
 
     if (!request) {
       this.scoped = [];
       this.subIntents = [];
+      this.steps = [];
       return;
     }
 
-    this.scoped = this.tickets.filter((t) => t.category === request.intent);
+    this.scoped = this.tickets.filter((t) => t.intent === request.intent);
 
     const seen: string[] = [];
+    const seenSteps: string[] = [];
 
     for (const ticket of this.scoped) {
       if (seen.indexOf(ticket.subIntent) === -1) {
         seen.push(ticket.subIntent);
       }
+
+      if (seenSteps.indexOf(ticket.step) === -1) {
+        seenSteps.push(ticket.step);
+      }
     }
 
     this.subIntents = seen.sort((a, b) => a.localeCompare(b));
+    this.steps = seenSteps.sort(
+      (a, b) => this.stepRank(a) - this.stepRank(b) || a.localeCompare(b)
+    );
+  }
+
+  /** Where a step falls in the pipeline; one the pipeline does not list goes last. */
+  private stepRank(step: string): number {
+    const index = STEP_ORDER.indexOf(step);
+
+    return index === -1 ? STEP_ORDER.length : index;
   }
 
   private applyFilters(): void {
@@ -149,7 +184,8 @@ export class TicketDrilldown implements OnChanges {
     this.filtered = this.scoped.filter(
       (ticket) =>
         (this.subIntentFilter === 'ALL' || ticket.subIntent === this.subIntentFilter) &&
-        (this.stageFilter === 'ALL' || ticket.stage === this.stageFilter) &&
+        (this.stepFilter === 'ALL' || ticket.step === this.stepFilter) &&
+        (this.columnFilter === 'ALL' || ticket.actionColumn === this.columnFilter) &&
         (this.slaFilter === 'ALL' || ticket.slaStatus === this.slaFilter) &&
         (query === '' || this.matchesQuery(ticket, query))
     );
@@ -162,7 +198,7 @@ export class TicketDrilldown implements OnChanges {
         ticket.subIntent,
         ticket.customerName,
         ticket.customerEmail,
-        ticket.stageLabel,
+        ticket.step,
         ticket.assignedTo,
         ticket.unit,
         ticket.project,
@@ -187,9 +223,13 @@ export class TicketDrilldown implements OnChanges {
       parts.push(this.subIntentFilter);
     }
 
-    if (this.stageFilter !== 'ALL') {
-      const stage = this.stages.find((s) => s.key === this.stageFilter);
-      parts.push(stage ? stage.label : this.stageFilter);
+    if (this.stepFilter !== 'ALL') {
+      parts.push(this.stepFilter);
+    }
+
+    if (this.columnFilter !== 'ALL') {
+      const column = this.columns.find((c) => c.key === this.columnFilter);
+      parts.push(column ? column.label : this.columnFilter);
     }
 
     if (this.slaFilter !== 'ALL') {

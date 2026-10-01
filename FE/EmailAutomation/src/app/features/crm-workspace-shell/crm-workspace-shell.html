@@ -5,7 +5,7 @@
 -->
 <app-side-nav
   [active]="screen"
-  (navigate)="$event === 'dashboard' ? showDashboard() : showAutomation()"
+  (navigate)="navigateTo($event)"
 ></app-side-nav>
 
 <main class="workspace-screen">
@@ -20,4 +20,8 @@
     (switchScreen)="showAutomation()"
     (openInWorkflow)="showTicketInWorkflow($event)"
   ></app-user-dashboard>
+
+  <app-customer-payment-receipt
+    *ngIf="screen === 'payment-receipt'"
+  ></app-customer-payment-receipt>
 </main>

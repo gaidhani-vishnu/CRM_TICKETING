@@ -8,7 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 
-import { DashboardTicket, WORKFLOW_STAGES } from '../../models/user-dashboard.model';
+import { DashboardTicket } from '../../models/user-dashboard.model';
 
 /** One key/value tile in the drawer's overview grid. */
 interface DrawerField {
@@ -84,9 +84,10 @@ export class TicketDrawer implements OnChanges {
     }
 
     return [
-      { label: 'Intent', value: ticket.category },
+      { label: 'Intent', value: ticket.intent },
       { label: 'Sub-Intent', value: ticket.subIntent },
-      { label: 'Current Stage', value: ticket.stageLabel },
+      { label: 'Category', value: ticket.category },
+      { label: 'Current Step', value: ticket.step },
       { label: 'Ticket Status', value: ticket.ticketStatus },
       { label: 'Received On', value: ticket.receivedOn || '—' },
       { label: 'Raised On', value: ticket.createdDate || '—' },
@@ -113,22 +114,24 @@ export class TicketDrawer implements OnChanges {
       return [];
     }
 
-    const current = WORKFLOW_STAGES.findIndex((stage) => stage.key === ticket.stage);
+    // The thread's own route — an agreement thread's thirteen stages, a
+    // system thread's two steps — rather than one list for every ticket.
+    const current = ticket.route.indexOf(ticket.step);
 
-    return WORKFLOW_STAGES.map((stage, index) => {
+    return ticket.route.map((title, index) => {
       if (index < current) {
-        return { title: stage.stepTitle, note: 'Completed', state: 'done' };
+        return { title, note: 'Completed', state: 'done' };
       }
 
       if (index === current) {
         return {
-          title: stage.stepTitle,
+          title,
           note: ticket.actionStatus !== '' ? ticket.actionStatus : 'In progress',
           state: 'current',
         };
       }
 
-      return { title: stage.stepTitle, note: 'Waiting for the previous step', state: 'waiting' };
+      return { title, note: 'Waiting for the previous step', state: 'waiting' };
     });
   }
 }

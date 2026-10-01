@@ -40,13 +40,22 @@
     </select>
 
     <select
-      [value]="stageFilter"
-      (change)="onStageChange($any($event.target).value)"
-      aria-label="Filter by workflow stage"
+      [value]="stepFilter"
+      (change)="onStepChange($any($event.target).value)"
+      aria-label="Filter by workflow step"
     >
-      <option value="ALL">All workflow stages</option>
-      <option *ngFor="let stage of stages; trackBy: trackByStageOption" [value]="stage.key">
-        {{ stage.label }}
+      <option value="ALL">All steps</option>
+      <option *ngFor="let step of steps" [value]="step">{{ step }}</option>
+    </select>
+
+    <select
+      [value]="columnFilter"
+      (change)="onColumnChange($any($event.target).value)"
+      aria-label="Filter by action status"
+    >
+      <option value="ALL">All action statuses</option>
+      <option *ngFor="let column of columns; trackBy: trackByColumnOption" [value]="column.key">
+        {{ column.label }}
       </option>
     </select>
 
@@ -72,7 +81,8 @@
           <th>Customer</th>
           <th>Email</th>
           <th>Unit</th>
-          <th>Current Stage</th>
+          <th>Current Step</th>
+          <th>Action Status</th>
           <th>Received On</th>
           <th>SLA Due</th>
           <th>SLA</th>
@@ -88,7 +98,8 @@
           <td>{{ ticket.customerName }}</td>
           <td class="col-email" [title]="ticket.customerEmail">{{ ticket.customerEmail || '—' }}</td>
           <td>{{ ticket.unit || '—' }}</td>
-          <td>{{ ticket.stageLabel }}</td>
+          <td>{{ ticket.step }}</td>
+          <td>{{ columnLabel(ticket) }}</td>
           <td>{{ ticket.receivedOn || '—' }}</td>
           <td>{{ ticket.slaDue || '—' }}</td>
           <td>

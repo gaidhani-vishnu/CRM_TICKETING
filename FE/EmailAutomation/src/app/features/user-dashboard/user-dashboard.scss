@@ -539,7 +539,7 @@
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
-  /* The folded 'Others' arc wears the de-emphasis grey. */
+  /* Every intent past the third wears the de-emphasis grey. */
   --series-0: #94a3b8;
 }
 
@@ -627,6 +627,11 @@
   display: grid;
   gap: 10px;
   min-width: 0;
+  /* Every intent is listed, so the list is the data's length. It scrolls
+     inside the card rather than stretching the whole row of three. */
+  max-height: 170px;
+  overflow-y: auto;
+  padding-right: 4px;
 
   .donut-legend-row {
     display: grid;

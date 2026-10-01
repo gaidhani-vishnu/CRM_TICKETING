@@ -144,6 +144,13 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
    */
   @Input() ticketCreatedOn = '';
 
+  /**
+   * True when the receipts list beside this panel has no tickets to show and no
+   * thread is open. The steps are then not drawn at all: there is no thread for
+   * them to be about.
+   */
+  @Input() isTicketListEmpty = false;
+
   private get isSelectedTicketClosed(): boolean {
     return this.ticketStatus.trim().toLowerCase() === 'closed';
   }

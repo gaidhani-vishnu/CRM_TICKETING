@@ -3,8 +3,10 @@
     <div class="card-title">
       <h2>Intent Wise Work Flow Count</h2>
       <span class="card-sub">
-        Click an intent, or any single count, to drill down to the tickets behind it.
-        A figure in brackets is how many of those are overdue.
+        Open an intent to see its sub-intents, and a sub-intent to see the workflow steps its
+        tickets are on now.
+        Click any count to drill down to the tickets behind it. A figure in brackets is how many
+        of those are overdue.
       </span>
     </div>
 
@@ -32,13 +34,8 @@
     <table class="matrix-table">
       <thead>
         <tr>
-          <th class="col-hierarchy">Intent / Sub-Intent</th>
-          <th *ngFor="let stage of stages; let i = index; trackBy: trackByStageColumn">
-            <span class="stage-head">
-              <span class="stage-index">{{ i + 1 }}</span>
-              {{ stage.label }}
-            </span>
-          </th>
+          <th class="col-hierarchy">Intent / Sub-Intent / Step</th>
+          <th *ngFor="let column of columns; trackBy: trackByColumn">{{ column.label }}</th>
           <th class="col-total">Total</th>
         </tr>
       </thead>
@@ -104,8 +101,8 @@
               </div>
             </td>
 
-            <!-- Intent-level Stage Count Cells -->
-            <td *ngFor="let cell of group.cells; trackBy: trackByStage">
+            <!-- Intent-level Count Cells -->
+            <td *ngFor="let cell of group.cells; trackBy: trackByCell">
               <button
                 class="stage-link parent-stage-link"
                 type="button"
@@ -138,55 +135,142 @@
 
           <!-- CHILD ROWS: SUB-INTENT LEVEL (SHOWN WHEN INTENT IS CLICKED / EXPANDED) -->
           <ng-container *ngIf="isExpanded(group)">
-            <tr
-              *ngFor="let row of group.rows; let last = last; trackBy: trackBySubIntent"
-              class="child-subintent-row"
-              [class.last-child]="last"
-            >
-              <!-- Unified Hierarchy Column for Child Sub-Intent -->
-              <td class="hierarchy-cell child-cell">
-                <div class="child-row-inner">
-                  <!-- Continuous Tree Guide Rail -->
-                  <div class="tree-rail" aria-hidden="true" [class.corner]="last">
-                    <span class="rail-v"></span>
-                    <span class="rail-h"></span>
+            <ng-container *ngFor="let row of group.rows; let last = last; trackBy: trackBySubIntent">
+              <tr
+                class="child-subintent-row"
+                [class.expanded]="isSubIntentExpanded(row)"
+                [class.last-child]="last && !isSubIntentExpanded(row)"
+              >
+                <!-- Unified Hierarchy Column for Child Sub-Intent -->
+                <td class="hierarchy-cell child-cell subintent-cell" (click)="toggleSubIntent(row, $event)">
+                  <div class="child-row-inner">
+                    <!-- Continuous Tree Guide Rail -->
+                    <div class="tree-rail" aria-hidden="true" [class.corner]="last">
+                      <span class="rail-v"></span>
+                      <span class="rail-h"></span>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="tree-toggle-btn small"
+                      (click)="toggleSubIntent(row, $event)"
+                      [attr.aria-expanded]="isSubIntentExpanded(row)"
+                      [title]="isSubIntentExpanded(row) ? 'Hide the steps of ' + row.subIntent : 'Show the steps of ' + row.subIntent"
+                    >
+                      <svg
+                        class="toggle-chevron"
+                        [class.rotated]="isSubIntentExpanded(row)"
+                        viewBox="0 0 24 24"
+                        width="11"
+                        height="11"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                    </button>
+
+                    <span class="subintent-name" [title]="row.subIntent">{{ row.subIntent }}</span>
+
+                    <span class="subintent-count-chip">
+                      {{ row.steps.length }} {{ row.steps.length === 1 ? 'Step' : 'Steps' }}
+                    </span>
                   </div>
+                </td>
 
-                  <span class="subintent-dot" aria-hidden="true"></span>
-                  <span class="subintent-name" [title]="row.subIntent">{{ row.subIntent }}</span>
-                </div>
-              </td>
+                <!-- Sub-Intent Count Cells -->
+                <td *ngFor="let cell of row.cells; trackBy: trackByCell">
+                  <button
+                    class="stage-link"
+                    type="button"
+                    (click)="onCellClick(row, cell, $event)"
+                    [class.active]="isActive(row, cell)"
+                    [class.zero]="cell.total === 0"
+                    [disabled]="cell.total === 0"
+                    [title]="cell.total + ' ticket(s), ' + cell.overdue + ' overdue in ' + row.subIntent"
+                  >
+                    {{ cell.total }}
+                    <span class="overdue-count" *ngIf="cell.overdue > 0">({{ cell.overdue }})</span>
+                  </button>
+                </td>
 
-              <!-- Sub-Intent Stage Cells -->
-              <td *ngFor="let cell of row.cells; trackBy: trackByStage">
-                <button
-                  class="stage-link"
-                  type="button"
-                  (click)="onCellClick(row, cell)"
-                  [class.active]="isActive(row, cell)"
-                  [class.zero]="cell.total === 0"
-                  [disabled]="cell.total === 0"
-                  [title]="cell.total + ' ticket(s), ' + cell.overdue + ' overdue'"
+                <!-- Sub-Intent Total Cell -->
+                <td class="total-cell">
+                  <button
+                    class="stage-link total"
+                    type="button"
+                    (click)="onCellClick(row, row.total, $event)"
+                    [class.active]="isActive(row, row.total)"
+                    [disabled]="row.total.total === 0"
+                  >
+                    {{ row.total.total }}
+                    <span class="overdue-count" *ngIf="row.total.overdue > 0">({{ row.total.overdue }})</span>
+                  </button>
+                </td>
+              </tr>
+
+              <!-- GRANDCHILD ROWS: THE STEP EACH TICKET OF THIS SUB-INTENT IS ON -->
+              <ng-container *ngIf="isSubIntentExpanded(row)">
+                <tr
+                  *ngFor="let step of row.steps; let lastStep = last; trackBy: trackByStep"
+                  class="child-step-row"
+                  [class.last-child]="last && lastStep"
                 >
-                  {{ cell.total }}
-                  <span class="overdue-count" *ngIf="cell.overdue > 0">({{ cell.overdue }})</span>
-                </button>
-              </td>
+                  <td class="hierarchy-cell child-cell">
+                    <div class="child-row-inner step-row-inner">
+                      <!-- The sub-intent rail carries on past its steps unless
+                           this sub-intent is the intent's last. -->
+                      <div class="tree-rail pass" aria-hidden="true" [class.hidden]="last">
+                        <span class="rail-v"></span>
+                      </div>
 
-              <!-- Sub-Intent Total Cell -->
-              <td class="total-cell">
-                <button
-                  class="stage-link total"
-                  type="button"
-                  (click)="onCellClick(row, row.total)"
-                  [class.active]="isActive(row, row.total)"
-                  [disabled]="row.total.total === 0"
-                >
-                  {{ row.total.total }}
-                  <span class="overdue-count" *ngIf="row.total.overdue > 0">({{ row.total.overdue }})</span>
-                </button>
-              </td>
-            </tr>
+                      <div class="tree-rail" aria-hidden="true" [class.corner]="lastStep">
+                        <span class="rail-v"></span>
+                        <span class="rail-h"></span>
+                      </div>
+
+                      <!-- Numbered as the Workflow Pipeline panel numbers its
+                           cards, counting the steps that are not listed. -->
+                      <span class="step-index">{{ step.number < 10 ? '0' + step.number : step.number }}</span>
+                      <span class="step-name" [title]="step.step">{{ step.step }}</span>
+                    </div>
+                  </td>
+
+                  <!-- Step Count Cells -->
+                  <td *ngFor="let cell of step.cells; trackBy: trackByCell">
+                    <button
+                      class="stage-link step-link"
+                      type="button"
+                      (click)="onStepCellClick(step, cell)"
+                      [class.active]="isStepActive(step, cell)"
+                      [class.zero]="cell.total === 0"
+                      [disabled]="cell.total === 0"
+                      [title]="cell.total + ' ticket(s), ' + cell.overdue + ' overdue at ' + step.step"
+                    >
+                      {{ cell.total }}
+                      <span class="overdue-count" *ngIf="cell.overdue > 0">({{ cell.overdue }})</span>
+                    </button>
+                  </td>
+
+                  <!-- Step Total Cell -->
+                  <td class="total-cell">
+                    <button
+                      class="stage-link step-link total"
+                      type="button"
+                      (click)="onStepCellClick(step, step.total)"
+                      [class.active]="isStepActive(step, step.total)"
+                      [disabled]="step.total.total === 0"
+                    >
+                      {{ step.total.total }}
+                      <span class="overdue-count" *ngIf="step.total.overdue > 0">({{ step.total.overdue }})</span>
+                    </button>
+                  </td>
+                </tr>
+              </ng-container>
+            </ng-container>
           </ng-container>
         </ng-container>
       </tbody>

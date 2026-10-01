@@ -35,6 +35,8 @@ import { Login } from './features/login/login';
 import { NewDashboard } from './features/new-dashboard/new-dashboard';
 import { UserAccountMenu } from './shared/components/user-account-menu/user-account-menu';
 import { ProfileModal } from './shared/components/profile-modal/profile-modal';
+import { ToastHost } from './shared/components/toast-host/toast-host';
+import { CustomerPaymentReceipt } from './features/customer-payment-receipt/customer-payment-receipt';
 
 @NgModule({
   declarations: [
@@ -62,6 +64,8 @@ import { ProfileModal } from './shared/components/profile-modal/profile-modal';
     KpiStatusRibbon,
     UserFilter,
     SideNav,
+    ToastHost,
+    CustomerPaymentReceipt,
   ],
   // FormsModule is here for the edit dialog's [(ngModel)] inputs — the first
   // place in the app that takes typed input rather than only rendering data.
