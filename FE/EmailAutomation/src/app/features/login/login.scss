@@ -1,5 +1,25 @@
-// Login screen — full-screen split layout. See login.ts for the quote
-// carousel's tick/parity trick and login.html for the markup this styles.
+// Login screen — full-screen split layout: a cinematic building hero on the
+// left, a light slanted panel with the sign-in card on the right. Purely
+// presentational; all form state lives in login.ts.
+
+// ── Brand tokens ─────────────────────────────────────────────────────
+
+$navy-950: #070f24;
+$navy-900: #0a1633;
+$navy-800: #0f2152;
+$navy-700: #16306e;
+$gold: #e8b45f;
+$gold-deep: #d49b3f;
+$ink: #0a1633;
+$slate-600: #475569;
+$slate-500: #64748b;
+$slate-400: #94a3b8;
+$line: #dfe5ee;
+$surface: #f4f6fb;
+$link: #1f5fbf;
+
+// Swap this path to change the hero photo (served from public/).
+$hero-image: '/images/login-hero.jpg';
 
 :host {
   display: block;
@@ -7,241 +27,253 @@
 }
 
 .login-page {
+  // How far the light panel's slanted edge bites into the hero.
+  --slant: 150px;
+
+  position: relative;
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
-  background: #f4f6fb;
+  overflow: hidden;
+  background: $navy-900;
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 // ── Left hero ────────────────────────────────────────────────────────
 
 .login-hero {
   position: relative;
-  flex: 0 0 56%;
-  max-width: 56%;
+  flex: 0 0 60%;
+  max-width: 60%;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   color: #fff;
   display: flex;
-  align-items: center;
-  padding: 64px 72px;
+  padding: clamp(32px, 6vh, 64px) calc(var(--slant) + 24px) clamp(32px, 6vh, 56px) clamp(32px, 5.5vw, 96px);
 }
 
-// A navy gradient plus (if the file exists) public/images/login-hero.jpg,
-// layered as two independent CSS background images — the gradient renders
-// either way, and the photo shows up automatically the moment the file is
-// dropped in, with no code change.
-.hero-gradient {
+// Photo under three tints: a left-to-right navy wash so the headline reads,
+// a dusk tint across the sky, and a darker floor for the tagline.
+.hero-media {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(135deg, rgba(8, 12, 26, 0.82) 0%, rgba(16, 28, 63, 0.82) 45%, rgba(22, 40, 94, 0.82) 100%),
-    url('/images/login-hero.jpg');
-  background-size: cover;
-  background-position: center;
-  background-color: #0d1330;
   z-index: 0;
+  background-color: $navy-900;
+  background-image:
+    linear-gradient(90deg, rgba($navy-950, 0.94) 0%, rgba($navy-900, 0.84) 30%, rgba($navy-800, 0.4) 58%, rgba($navy-800, 0.08) 100%),
+    linear-gradient(180deg, rgba($navy-800, 0.45) 0%, rgba($navy-800, 0) 38%),
+    linear-gradient(0deg, rgba($navy-950, 0.88) 0%, rgba($navy-950, 0) 34%),
+    url($hero-image);
+  background-size: cover;
+  background-position: 70% center;
+  transform: scale(1.02);
+  animation: hero-settle 1.6s ease-out both;
 }
 
-// Placeholder for a real login-hero.jpg (public/images/login-hero.jpg): a
-// low-opacity tower silhouette over the navy gradient, so the hero reads as
-// finished without a photo — drop a real one in at that path any time.
-.hero-skyline-art {
+.hero-bars {
   position: absolute;
   left: 0;
-  right: 0;
   bottom: 0;
-  height: 55%;
-  color: rgba(255, 255, 255, 0.05);
-  fill: currentColor;
-  z-index: 0;
-  pointer-events: none;
-}
-
-// The curved blend into the light right panel: an off-canvas circle bitten
-// out of the hero's right edge, clipped by the hero's own overflow:hidden.
-.hero-curve {
-  position: absolute;
-  top: 50%;
-  right: -150px;
-  width: 340px;
-  height: 165%;
-  transform: translateY(-50%);
-  background: #f4f6fb;
-  border-radius: 50%;
+  width: min(48%, 520px);
+  height: auto;
   z-index: 1;
   pointer-events: none;
+
+  rect {
+    fill: rgba(255, 255, 255, 0.055);
+  }
 }
 
 .hero-content {
   position: relative;
   z-index: 2;
-  max-width: 560px;
-}
-
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-logo {
-  width: 34px;
-  height: 34px;
-  color: #e2b86b;
-  flex-shrink: 0;
-}
-
-.brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  width: 100%;
+  max-width: 640px;
 }
 
-.brand-name {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: #fff;
-}
-
-.brand-sub {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 3px;
-  color: #e2b86b;
-  margin-top: 2px;
-}
-
-.brand-rule {
-  width: 60px;
+.hero-rule {
+  display: block;
+  width: 64px;
   height: 3px;
-  background: #e2b86b;
+  margin-top: 22px;
   border-radius: 2px;
-  margin: 16px 0 32px;
+  background: linear-gradient(90deg, $gold, $gold-deep);
 }
 
 .hero-headline {
-  font-size: 44px;
-  font-weight: 800;
-  line-height: 1.15;
-  margin: 0 0 18px;
+  margin: auto 0;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 24px rgba($navy-950, 0.35);
 
-  .accent {
-    color: #e2b86b;
+  .hl-strong {
+    font-size: clamp(40px, 4.6vw, 76px);
+    font-weight: 800;
+    line-height: 1.04;
+  }
+
+  .hl-gold {
+    background: linear-gradient(180deg, #f6cd85 0%, $gold 55%, $gold-deep 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+  }
+
+  .hl-light {
+    font-size: clamp(28px, 3.2vw, 52px);
+    font-weight: 500;
+    line-height: 1.14;
+    letter-spacing: 0;
+    word-spacing: 0.08em;
+    padding-left: 3px;
   }
 }
 
-.hero-subtitle {
-  font-size: 15px;
-  line-height: 1.65;
-  color: rgba(255, 255, 255, 0.75);
-  max-width: 460px;
-  margin: 0 0 36px;
+.hero-tagline {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+
+  .sep {
+    display: inline-block;
+    margin: 0 0.9em 0 0.5em;
+    color: $gold;
+    letter-spacing: 0;
+  }
 }
 
-.feature-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 40px;
-  max-width: 480px;
+// ── Logo slot (hero + card) ──────────────────────────────────────────
+// The real logo lives at public/images/pride-logo.png. The fallback lockup
+// only shows while that file is missing (the <img> flags itself .is-missing
+// on a load error — see login.html).
+
+.brand-logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.feature-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(6px);
-  border-radius: 14px;
-  padding: 16px;
+.brand-logo-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+
+  &.is-missing {
+    display: none;
+  }
+
+  &:not(.is-missing) + .brand-logo-fallback {
+    display: none;
+  }
 }
 
-.feature-icon {
-  width: 34px;
-  height: 34px;
+.brand-logo-fallback {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: rgba(226, 184, 107, 0.15);
-  color: #e2b86b;
-  margin-bottom: 10px;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
 }
 
-.feature-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 2px;
-}
-
-.feature-caption {
-  font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.4;
-}
-
-.quote-block {
-  max-width: 480px;
-}
-
-.quote-text {
-  font-size: 14px;
-  font-style: italic;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.6;
-  margin: 0 0 14px;
-  min-height: 44px;
-}
-
-.quote-dots {
+.logo-mark {
   display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.25);
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.2s;
-
-  &.active {
-    background: #e2b86b;
-  }
-}
-
-.quote-progress {
-  width: 100%;
-  max-width: 160px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.15);
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   border-radius: 2px;
-  overflow: hidden;
 }
 
-.quote-progress-fill {
-  height: 100%;
-  background: #e2b86b;
-  width: 0%;
-  animation: quote-fill 5s linear forwards;
+.logo-glyph {
+  display: block;
 }
 
-@keyframes quote-fill {
-  from {
-    width: 0%;
+.logo-word {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.logo-group {
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  margin-right: -0.42em; // optically re-centre the tracked caption
+  white-space: nowrap;
+}
+
+.brand-logo--light {
+  .brand-logo-img {
+    height: 128px;
   }
-  to {
-    width: 100%;
+
+  .logo-mark {
+    width: 112px;
+    height: 104px;
+    padding-bottom: 14px;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.95);
+    outline: 1px solid rgba(255, 255, 255, 0.55);
+    outline-offset: -8px;
+    background: rgba($navy-900, 0.35);
+    backdrop-filter: blur(4px);
+  }
+
+  .logo-glyph {
+    width: 54px;
+    margin-bottom: 8px;
+  }
+
+  .logo-word {
+    font-size: 21px;
+  }
+
+  .logo-group {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #fff;
+  }
+}
+
+.brand-logo--dark {
+  align-items: center;
+
+  .brand-logo-img {
+    height: 104px;
+  }
+
+  .logo-mark {
+    width: 84px;
+    height: 78px;
+    padding-bottom: 11px;
+    color: #fff;
+    background: linear-gradient(160deg, $navy-800 0%, $navy-900 100%);
+    outline: 1px solid rgba(255, 255, 255, 0.75);
+    outline-offset: -5px;
+    box-shadow: 0 8px 20px rgba($navy-900, 0.22);
+  }
+
+  .logo-glyph {
+    width: 40px;
+    margin-bottom: 6px;
+  }
+
+  .logo-word {
+    font-size: 15.5px;
+  }
+
+  .logo-group {
+    margin-top: 10px;
+    font-size: 11px;
+    color: $ink;
   }
 }
 
@@ -249,104 +281,81 @@
 
 .login-panel {
   position: relative;
-  flex: 1;
-  min-height: 100vh;
-  background: #f4f6fb;
+  z-index: 3;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: calc(-1 * var(--slant));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
-  overflow: hidden;
-}
+  padding: 32px clamp(24px, 4vw, 72px) 24px calc(var(--slant) + 16px);
 
-.panel-blob {
-  position: absolute;
-  top: -120px;
-  right: -120px;
-  width: 360px;
-  height: 360px;
-  background: radial-gradient(circle at 30% 30%, rgba(11, 94, 215, 0.12), transparent 70%);
-  border-radius: 50%;
-  z-index: 0;
-  pointer-events: none;
-}
+  // Gold wedge that sits between the hero and the light surface, fading
+  // out toward the bottom.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(180deg, rgba($gold, 0.95) 0%, rgba($gold, 0.6) 30%, rgba($gold, 0) 72%);
+    clip-path: polygon(calc(var(--slant) * 0.42) 0, 100% 0, 100% 100%, 0 100%);
+  }
 
-.panel-top {
-  position: absolute;
-  top: 32px;
-  right: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  z-index: 1;
-}
-
-.panel-group {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: #0b1229;
-}
-
-.panel-tagline {
-  font-size: 9.5px;
-  letter-spacing: 1.5px;
-  color: #94a3b8;
-  margin-top: 2px;
+  // The light surface itself, with a slanted leading edge.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 92% 6%, rgba($gold, 0.12), transparent 38%),
+      radial-gradient(circle at 10% 100%, rgba($navy-700, 0.07), transparent 45%),
+      linear-gradient(165deg, #fafbfe 0%, $surface 55%, #edf1f8 100%);
+    clip-path: polygon(var(--slant) 0, 100% 0, 100% 100%, calc(var(--slant) * 0.42) 100%);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
 }
 
 .login-card {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 400px;
-  background: #ffffff;
-  border-radius: 24px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
-  padding: 40px 36px;
+  max-width: 460px;
+  padding: 36px 40px 0;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(255, 255, 255, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 32px 80px rgba($navy-900, 0.14),
+    0 10px 28px rgba($navy-900, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  overflow: hidden;
+  animation: card-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 .card-brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.card-logo {
-  width: 28px;
-  height: 28px;
-  color: #0b1229;
-  flex-shrink: 0;
-}
-
-.card-brand-name {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: #0b1229;
-}
-
-.card-brand-sub {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  color: #94a3b8;
-  margin-top: 1px;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .card-title {
-  font-size: 24px;
+  margin: 0;
+  text-align: center;
+  font-size: 30px;
   font-weight: 800;
-  color: #0b1229;
-  margin: 0 0 4px;
+  letter-spacing: -0.4px;
+  color: $ink;
 }
 
 .card-subtitle {
-  font-size: 13.5px;
-  color: #64748b;
-  margin: 0 0 24px;
+  margin: 6px 0 26px;
+  text-align: center;
+  font-size: 15px;
+  color: $slate-500;
 }
 
 .error-banner {
@@ -356,11 +365,11 @@
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #b91c1c;
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 11px 14px;
   font-size: 13px;
   line-height: 1.5;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 
   svg {
     width: 18px;
@@ -378,80 +387,106 @@
 
 .field label {
   display: block;
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  color: #334155;
-  margin-bottom: 6px;
+  color: $ink;
+  margin-bottom: 7px;
 }
 
 .field-control {
   display: flex;
   align-items: center;
-  gap: 10px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0 14px;
-  height: 48px;
-  background: #fff;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  gap: 12px;
+  height: 52px;
+  padding: 0 16px;
+  border: 1.5px solid $line;
+  border-radius: 12px;
+  background: #fbfcfe;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
 
   &:focus-within {
-    border-color: #0b5ed7;
-    box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.12);
+    border-color: $navy-700;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba($gold, 0.2);
+
+    .field-icon {
+      color: $navy-700;
+    }
   }
 }
 
 .field.invalid .field-control {
   border-color: #ef4444;
+
+  &:focus-within {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+  }
 }
 
 .field-icon {
-  width: 18px;
-  height: 18px;
-  color: #94a3b8;
+  width: 20px;
+  height: 20px;
+  color: $slate-400;
   flex-shrink: 0;
+  transition: color 0.2s;
 }
 
 .field-control input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   border: none;
   outline: none;
-  flex: 1;
-  font-size: 14px;
-  color: #0b1229;
   background: transparent;
   font-family: inherit;
-  height: 100%;
-  min-width: 0;
+  font-size: 14.5px;
+  color: $ink;
 
   &::placeholder {
-    color: #94a3b8;
+    color: $slate-400;
   }
 
   &:disabled {
-    color: #94a3b8;
+    color: $slate-400;
   }
 }
 
 .eye-toggle {
-  border: none;
-  background: none;
-  padding: 2px;
-  cursor: pointer;
-  color: #94a3b8;
   display: flex;
   flex-shrink: 0;
+  padding: 4px;
+  margin-right: -4px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: $slate-500;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
 
   svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover {
+    color: $navy-700;
+    background: rgba($navy-700, 0.06);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba($gold, 0.7);
+    outline-offset: 1px;
   }
 }
 
 .field-error {
   display: block;
   margin-top: 6px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #ef4444;
 }
 
@@ -461,132 +496,404 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 2px;
 }
 
 .remember-me {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #334155;
+  gap: 10px;
+  font-size: 14px;
+  color: $slate-600;
   cursor: pointer;
+  user-select: none;
 
   input {
-    width: 15px;
-    height: 15px;
-    accent-color: #0b5ed7;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: $navy-800;
     cursor: pointer;
   }
 }
 
 .forgot-link {
+  position: relative;
+  padding: 0;
   border: none;
   background: none;
-  padding: 0;
-  font-size: 12.5px;
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 600;
-  color: #0b5ed7;
+  color: $link;
   cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.25s ease;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 .forgot-note {
-  margin: -8px 0 0;
-  font-size: 12px;
-  color: #64748b;
-  background: #f1f5f9;
-  border-radius: 8px;
+  margin: -6px 0 0;
   padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 3px solid $gold;
+  background: #f5f7fb;
+  font-size: 12.5px;
+  color: $slate-600;
 }
 
 .login-button {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  height: 48px;
+  height: 54px;
+  margin-top: 4px;
   border: none;
-  border-radius: 10px;
-  background: #0b5ed7;
+  border-radius: 12px;
+  background: linear-gradient(135deg, $navy-700 0%, $navy-800 45%, $navy-900 100%);
+  background-size: 160% 100%;
+  background-position: 100% 0;
   color: #fff;
-  font-size: 14.5px;
+  font-family: inherit;
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: 0.2px;
   cursor: pointer;
-  transition: background 0.15s;
+  overflow: hidden;
+  box-shadow: 0 12px 26px rgba($navy-900, 0.24);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-position 0.4s ease;
 
   svg {
-    width: 17px;
-    height: 17px;
+    width: 18px;
+    height: 18px;
+    transition: transform 0.25s ease;
+  }
+
+  // Thin gold line that draws in along the bottom edge on hover.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 18%;
+    right: 18%;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, $gold, transparent);
+    opacity: 0;
+    transform: scaleX(0.4);
+    transition: opacity 0.3s ease, transform 0.35s ease;
   }
 
   &:hover:not(:disabled) {
-    background: #094fb8;
+    transform: translateY(-2px);
+    background-position: 0 0;
+    box-shadow: 0 18px 34px rgba($navy-900, 0.3);
+
+    svg {
+      transform: translateX(4px);
+    }
+
+    &::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba($navy-900, 0.24);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba($gold, 0.6);
+    outline-offset: 2px;
   }
 
   &:disabled {
-    opacity: 0.75;
+    opacity: 0.78;
     cursor: not-allowed;
   }
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 2px 0;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #e2e8f0;
-  }
-}
-
-.decorative-skyline {
-  width: 100%;
-  height: 32px;
-  color: #e2e8f0;
+.card-skyline {
+  display: block;
+  width: calc(100% + 80px);
+  height: auto;
+  margin: 22px -40px 0;
+  color: #c7d0dd;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
 .login-footer {
   position: relative;
   z-index: 1;
-  margin-top: 28px;
-  font-size: 11.5px;
-  color: #94a3b8;
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: $slate-400;
   text-align: center;
+}
+
+// ── Motion ───────────────────────────────────────────────────────────
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-settle {
+  from {
+    transform: scale(1.07);
+  }
+  to {
+    transform: scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-media,
+  .login-card {
+    animation: none;
+  }
+
+  .login-button,
+  .login-button svg,
+  .login-button::after,
+  .forgot-link::after,
+  .field-control {
+    transition: none;
+  }
 }
 
 // ── Responsive ───────────────────────────────────────────────────────
 
-@media (max-width: 960px) {
-  .login-hero {
-    display: none;
+// Short desktop screens: tighten vertical rhythm so the card stays in 100vh.
+@media (min-width: 961px) and (max-height: 780px) {
+  .brand-logo--light .brand-logo-img {
+    height: 100px;
   }
 
-  .login-page {
-    display: block;
+  .brand-logo--light .logo-mark {
+    width: 96px;
+    height: 88px;
   }
 
-  .login-panel {
-    min-height: 100vh;
-    padding: 16px;
+  .brand-logo--dark .brand-logo-img {
+    height: 80px;
   }
 
-  .panel-top {
-    position: static;
-    align-items: center;
-    text-align: center;
-    margin-bottom: 24px;
+  .brand-logo--dark .logo-mark {
+    width: 70px;
+    height: 64px;
+    padding-bottom: 8px;
+  }
+
+  .brand-logo--dark .logo-glyph {
+    width: 34px;
+    margin-bottom: 4px;
+  }
+
+  .brand-logo--dark .logo-group {
+    margin-top: 7px;
   }
 
   .login-card {
-    margin: 0 auto;
+    padding-top: 26px;
+  }
+
+  .card-brand {
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-size: 26px;
+  }
+
+  .card-subtitle {
+    margin-bottom: 18px;
+  }
+
+  .login-form {
+    gap: 14px;
+  }
+
+  .field-control {
+    height: 48px;
+  }
+
+  .login-button {
+    height: 50px;
+  }
+
+  .card-skyline {
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .login-page {
+    --slant: 120px;
+  }
+
+  .login-hero {
+    flex-basis: 56%;
+    max-width: 56%;
+  }
+
+  .hero-tagline {
+    font-size: 12px;
+    letter-spacing: 0.32em;
+  }
+}
+
+// Tablet & mobile: the hero becomes a banner and the card overlaps it.
+@media (max-width: 960px) {
+  .login-page {
+    flex-direction: column;
+    background: $surface;
+  }
+
+  .login-hero {
+    flex: none;
+    max-width: none;
+    width: 100%;
+    min-height: 0;
+    padding: 32px 32px 112px;
+  }
+
+  .hero-media {
+    background-image:
+      linear-gradient(90deg, rgba($navy-950, 0.9) 0%, rgba($navy-900, 0.75) 55%, rgba($navy-800, 0.45) 100%),
+      linear-gradient(0deg, rgba($navy-950, 0.85) 0%, rgba($navy-950, 0) 50%),
+      url($hero-image);
+    background-position: 65% 40%;
+  }
+
+  .hero-bars {
+    width: 60%;
+  }
+
+  .hero-headline {
+    margin: 0;
+    padding: 28px 0 24px;
+
+    .hl-strong {
+      font-size: clamp(32px, 6.4vw, 52px);
+    }
+
+    .hl-light {
+      font-size: clamp(22px, 4.4vw, 36px);
+    }
+  }
+
+  .login-panel {
+    margin: -80px 0 0;
+    padding: 0 16px 28px;
+    justify-content: flex-start;
+
+    &::before,
+    &::after {
+      display: none;
+    }
+  }
+
+  .login-card {
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-hero {
+    padding: 24px 20px 104px;
+  }
+
+  .brand-logo--light .brand-logo-img {
+    height: 84px;
+  }
+
+  .brand-logo--light .logo-mark {
+    width: 80px;
+    height: 74px;
+    padding-bottom: 9px;
+    outline-offset: -6px;
+  }
+
+  .brand-logo--light .logo-glyph {
+    width: 38px;
+    margin-bottom: 5px;
+  }
+
+  .brand-logo--light .logo-word {
+    font-size: 15px;
+  }
+
+  .brand-logo--light .logo-group {
+    margin-top: 10px;
+    font-size: 10.5px;
+  }
+
+  .hero-rule {
+    margin-top: 16px;
+  }
+
+  .hero-headline {
+    padding: 22px 0 18px;
+  }
+
+  .hero-tagline {
+    font-size: 10px;
+    letter-spacing: 0.24em;
+
+    .sep {
+      margin: 0 0.6em 0 0.35em;
+    }
+  }
+
+  .login-card {
+    padding: 28px 22px 0;
+    border-radius: 22px;
+  }
+
+  .card-title {
+    font-size: 26px;
+  }
+
+  .card-subtitle {
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+
+  .card-skyline {
+    width: calc(100% + 44px);
+    margin: 18px -22px 0;
   }
 }

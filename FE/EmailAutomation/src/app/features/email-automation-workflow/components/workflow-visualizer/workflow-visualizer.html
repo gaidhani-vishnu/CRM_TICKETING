@@ -14,6 +14,7 @@
 
       <button
         class="scroll-btn"
+        *ngIf="!isTicketListEmpty"
         (click)="toggleScroll()"
         [title]="isScrolledToBottom ? 'Scroll to Top' : 'Scroll to Bottom'"
       >
@@ -49,7 +50,10 @@
   </div>
 
   <div class="workflow-content" #scrollContainer (scroll)="onScroll()">
-    <!-- Workflow Visual Nodes Container (Connected Timeline Layout) -->
+    <!-- Workflow Visual Nodes Container (Connected Timeline Layout).
+         Left blank when the receipts list has no tickets: a pipeline of steps
+         beside an empty list reads as work waiting on a thread that is not there. -->
+    <ng-container *ngIf="!isTicketListEmpty">
     <div class="nodes-container" [class.is-switching-thread]="isThreadChanging" *ngIf="getWorkflowNodes() as nodes">
       <!-- One row = the rail gutter on the left + a free-standing card on the
            right. The rail is a sibling of the card, never inside it. -->
@@ -180,6 +184,7 @@
         </div>
       </div>
     </div>
+    </ng-container>
   </div>
 
   <!-- FIXED ALWAYS VISIBLE NODE INSPECTOR PANEL

@@ -113,6 +113,123 @@ export const WORKFLOW_STAGES: WorkflowStage[] = [
   },
 ];
 
+/** The step a thread with no [Workflow Status] is on: only its ticket has been raised. */
+export const ACKNOWLEDGEMENT_STEP = 'Ticket Acknowledgement';
+
+/**
+ * The pipeline's step titles, exactly as the Workflow Pipeline panel prints
+ * them on its cards (routeNodes() in workflow-visualizer.ts), so a step reads
+ * the same on the dashboard as on the thread it counts.
+ */
+export const EMAIL_VERIFICATION_STEP = 'Customer Email Verification';
+export const UNIT_MATCH_STEP = 'Unit Match';
+export const INSTRUMENT_MATCH_STEP = 'Instrument Match';
+export const BANK_RECONCILIATION_STEP = 'Bank Reconciliation';
+export const IN4_RECEIPT_STEP = 'In4 Receipt';
+export const EMAIL_RESPONSE_STEP = 'Email Response';
+export const FINAL_EMAIL_RESPONSE_STEP = 'Final Email Response';
+
+const AGREEMENT_STEP_TITLES: readonly string[] = AGREEMENT_STEPS.map((step) => step.title);
+
+/**
+ * Every step a thread can be on, in pipeline order — what the matrix sorts its
+ * step rows by. The Agreement Workflow's thirteen stages are listed one by one
+ * here, unlike in WORKFLOW_STAGES: the matrix gives each its own row.
+ */
+export const STEP_ORDER: readonly string[] = [
+  ACKNOWLEDGEMENT_STEP,
+  EMAIL_VERIFICATION_STEP,
+  UNIT_MATCH_STEP,
+  ...AGREEMENT_STEP_TITLES,
+  INSTRUMENT_MATCH_STEP,
+  BANK_RECONCILIATION_STEP,
+  IN4_RECEIPT_STEP,
+  EMAIL_RESPONSE_STEP,
+  FINAL_EMAIL_RESPONSE_STEP,
+];
+
+/** [Category] with its punctuation and spacing stripped, as the pipeline compares it. */
+function normalizedCategory(category: string): string {
+  return (category || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+/** True when a thread runs the Agreement Workflow's thirteen stages. */
+export function isAgreementRoute(category: string, intent: string, subIntent: string): boolean {
+  const isAgreement = (value: string) => (value || '').trim().toLowerCase() === 'agreement';
+
+  return normalizedCategory(category) === 'nonpaymentcustomer' && isAgreement(intent) && isAgreement(subIntent);
+}
+
+/**
+ * The steps a thread's pipeline runs, first to last.
+ *
+ * The same four routes the Workflow Pipeline panel draws — see the filters at
+ * the end of routeNodes() in workflow-visualizer.ts, which this must be kept
+ * in step with:
+ *
+ *   • Non-Payment - System   → ticket, then the reply.
+ *   • an agreement thread    → ticket, sender, unit, the thirteen stages, reply.
+ *   • Non-Payment - Customer → ticket, sender, unit, reply.
+ *   • everything else        → the payment pipeline, which ends in the Final
+ *                              Email Response rather than the plain reply.
+ *
+ * The matrix lists a sub-intent's whole route from this, so a step nobody is
+ * on still shows as a row of zeros instead of being missing.
+ */
+export function workflowRoute(category: string, intent: string, subIntent: string): string[] {
+  const kind = normalizedCategory(category);
+
+  if (kind === 'nonpaymentsystem') {
+    return [ACKNOWLEDGEMENT_STEP, EMAIL_RESPONSE_STEP];
+  }
+
+  if (kind === 'nonpaymentcustomer') {
+    return [
+      ACKNOWLEDGEMENT_STEP,
+      EMAIL_VERIFICATION_STEP,
+      UNIT_MATCH_STEP,
+      ...(isAgreementRoute(category, intent, subIntent) ? AGREEMENT_STEP_TITLES : []),
+      EMAIL_RESPONSE_STEP,
+    ];
+  }
+
+  return [
+    ACKNOWLEDGEMENT_STEP,
+    EMAIL_VERIFICATION_STEP,
+    UNIT_MATCH_STEP,
+    INSTRUMENT_MATCH_STEP,
+    BANK_RECONCILIATION_STEP,
+    IN4_RECEIPT_STEP,
+    FINAL_EMAIL_RESPONSE_STEP,
+  ];
+}
+
+/** One count column of the matrix. */
+export type ActionColumnKey = 'done' | 'verify' | 'edit' | 'processing';
+
+/** A count column, and the [Action Status] values that put a ticket in it. */
+export interface ActionColumn {
+  key: ActionColumnKey;
+  /** Column heading, e.g. 'User Verification'. */
+  label: string;
+  /** The main_email_receipts.[Action Status] values counted here. */
+  statuses: string[];
+}
+
+/**
+ * The matrix's columns, left to right.
+ *
+ * Processing is the catch-all as well as 'Pending': [Action Status] is blank
+ * until a thread has been opened in the workflow screen, and a ticket nobody
+ * has looked at yet is still the pipeline's to work.
+ */
+export const ACTION_COLUMNS: ActionColumn[] = [
+  { key: 'done', label: 'Done', statuses: ['Done'] },
+  { key: 'verify', label: 'User Verification', statuses: ['User Verification Required'] },
+  { key: 'edit', label: 'User Edit', statuses: ['User Intervention'] },
+  { key: 'processing', label: 'Processing', statuses: ['Pending'] },
+];
+
 /**
  * One open ticket, as the dashboard needs it: its receipt row and its ticket
  * row folded into a single flat record.
@@ -138,6 +255,15 @@ export interface DashboardTicket {
   stageLabel: string;
   /** The raw [Workflow Status] the stage was derived from. '' when nothing has run. */
   workflowStatus: string;
+  /**
+   * The step the thread is waiting on, e.g. 'Unit Match', named as the
+   * Workflow Pipeline panel names it. The matrix's third level.
+   */
+  step: string;
+  /** Every step this thread's pipeline runs, first to last — see workflowRoute(). */
+  route: string[];
+  /** Which matrix column its [Action Status] counts under. */
+  actionColumn: ActionColumnKey;
   /**
    * [Action Status] — 'Done', 'Pending', 'User Verification Required' or
    * 'User Intervention'. Blank until a reviewer has
@@ -200,7 +326,7 @@ export interface IntentCount {
   intent: string;
   total: number;
   pct: number;
-  /** Colour slot 1–3, or 0 for everything folded into 'Others'. */
+  /** Colour slot 1–3, or 0 (grey) for every intent past the third. */
   slot: number;
 }
 
@@ -223,29 +349,50 @@ export interface SlaBucket {
 
 /** One cell of the matrix: how many threads, and how many of those are overdue. */
 export interface MatrixCell {
-  stage: StageKey | 'ALL';
+  column: ActionColumnKey | 'ALL';
   total: number;
   overdue: number;
 }
 
-/** One sub-intent line of the matrix. */
-export interface MatrixRow {
+/** One step line of the matrix — the third level, under a sub-intent. */
+export interface StepRow {
   intent: string;
   subIntent: string;
-  /** One cell per WORKFLOW_STAGES entry, in that order. */
+  step: string;
+  /**
+   * The step's 1-based place in its route, as the Workflow Pipeline panel
+   * numbers its cards — kept even when the steps before it are not listed,
+   * so '02' here is STEP 02 there.
+   */
+  number: number;
+  /** One cell per ACTION_COLUMNS entry, in that order. */
   cells: MatrixCell[];
   total: MatrixCell;
 }
 
-/** One intent block of the matrix — the cell that spans its sub-intent rows. */
+/** One sub-intent line of the matrix, rolled up from its step rows. */
+export interface MatrixRow {
+  intent: string;
+  subIntent: string;
+  /** One cell per ACTION_COLUMNS entry, in that order. */
+  cells: MatrixCell[];
+  total: MatrixCell;
+  /**
+   * Only the steps a ticket is on, in pipeline order. A step nobody is waiting
+   * at would be a row of zeros and is left out.
+   */
+  steps: StepRow[];
+}
+
+/** One intent block of the matrix, rolled up from its sub-intent rows. */
 export interface IntentGroup {
   intent: string;
   openCount: number;
   /** Colour slot 1–3, or 0, shared with the donut so the two agree. */
   slot: number;
-  /** Aggregated stage cells for the entire intent. */
+  /** Aggregated column cells for the entire intent. */
   cells: MatrixCell[];
-  /** Aggregated total across all stages for the intent. */
+  /** Aggregated total across all columns for the intent. */
   total: MatrixCell;
   rows: MatrixRow[];
 }
@@ -255,7 +402,9 @@ export interface DrillRequest {
   intent: string;
   /** 'ALL' when a whole intent was clicked rather than one sub-intent line. */
   subIntent: string;
-  stage: StageKey | 'ALL';
+  /** 'ALL' when an intent or sub-intent line was clicked rather than one step. */
+  step: string;
+  column: ActionColumnKey | 'ALL';
 }
 
 /** Everything the dashboard renders for the current date + user filter. */

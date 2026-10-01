@@ -1,0 +1,111 @@
+<div class="cpr-container">
+  <header class="cpr-header">
+    <div class="cpr-brand">
+      <div class="cpr-brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 3h16v18l-3-2-3 2-2-2-2 2-3-2-3 2z"></path>
+          <line x1="8" y1="8" x2="16" y2="8"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+          <line x1="8" y1="16" x2="12" y2="16"></line>
+        </svg>
+      </div>
+      <div>
+        <h1 class="cpr-title">Customer Payment Receipt</h1>
+        <p class="cpr-subtitle">Pick a live booking, then create its payment record in the Customer Payment Portal.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="cpr-card cpr-filters" aria-label="Choose a booking">
+    <div class="cpr-grid">
+      <label class="cpr-field">
+        <span class="cpr-label">Project <em *ngIf="loading.project">loading…</em></span>
+        <input
+          type="text"
+          list="cpr-project-list"
+          autocomplete="off"
+          placeholder="Type or pick a project"
+          [ngModel]="project"
+          (ngModelChange)="onProjectChange($event)"
+          [disabled]="handoff.isPending"
+        />
+        <datalist id="cpr-project-list">
+          <option *ngFor="let value of projects" [value]="value"></option>
+        </datalist>
+      </label>
+
+      <label class="cpr-field">
+        <span class="cpr-label">Sub Project <em *ngIf="loading.subProject">loading…</em></span>
+        <input
+          type="text"
+          list="cpr-subproject-list"
+          autocomplete="off"
+          [placeholder]="subProjects.length ? 'Type or pick a sub project' : 'Choose a project first'"
+          [ngModel]="subProject"
+          (ngModelChange)="onSubProjectChange($event)"
+          [disabled]="handoff.isPending || !subProjects.length"
+        />
+        <datalist id="cpr-subproject-list">
+          <option *ngFor="let value of subProjects" [value]="value"></option>
+        </datalist>
+      </label>
+
+      <label class="cpr-field">
+        <span class="cpr-label">Unit <em *ngIf="loading.unit">loading…</em></span>
+        <input
+          type="text"
+          list="cpr-unit-list"
+          autocomplete="off"
+          [placeholder]="units.length ? 'Type or pick a unit' : 'Choose a sub project first'"
+          [ngModel]="unit"
+          (ngModelChange)="onUnitChange($event)"
+          [disabled]="handoff.isPending || !units.length"
+        />
+        <datalist id="cpr-unit-list">
+          <option *ngFor="let value of units" [value]="value"></option>
+        </datalist>
+      </label>
+
+      <label class="cpr-field">
+        <span class="cpr-label">Customer Name <em *ngIf="loading.customer">loading…</em></span>
+        <input
+          type="text"
+          list="cpr-customer-list"
+          autocomplete="off"
+          [placeholder]="customers.length ? 'Type or pick a customer' : 'Choose a unit first'"
+          [ngModel]="customer"
+          (ngModelChange)="onCustomerChange($event)"
+          [disabled]="handoff.isPending || !customers.length"
+        />
+        <datalist id="cpr-customer-list">
+          <option *ngFor="let option of customers" [value]="option.customerName"></option>
+        </datalist>
+      </label>
+    </div>
+
+    <div class="cpr-actions">
+      <div class="cpr-selection" *ngIf="selectedBooking; else noSelection">
+        Selected: <strong>{{ unit }}</strong> · {{ project }} · {{ subProject }} ·
+        {{ selectedBooking.customerName }} <span class="cpr-muted">({{ selectedBooking.accountItemNo }})</span>
+      </div>
+      <ng-template #noSelection>
+        <div class="cpr-selection cpr-muted">Choose all four fields to enable Create Record.</div>
+      </ng-template>
+
+      <div class="cpr-buttons">
+        <button type="button" class="cpr-btn cpr-btn-ghost" (click)="clearAll()" [disabled]="!hasAnyFilter || handoff.isPending">
+          Clear
+        </button>
+        <button type="button" class="cpr-btn cpr-btn-primary" (click)="createRecord()" [disabled]="!canCreate">
+          <span class="wf-spinner on-dark" *ngIf="creating"></span>
+          Create Record
+        </button>
+      </div>
+    </div>
+
+    <p class="cpr-waiting" *ngIf="handoff.isPending" role="status">
+      <span class="wf-spinner"></span>
+      Waiting for the Customer Payment Portal… This screen updates by itself when the record is saved or the portal session ends.
+    </p>
+  </section>
+</div>

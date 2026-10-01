@@ -7,14 +7,15 @@ import { isAdminRole } from '../../../core/guards/role-routing';
 
 /**
  * Where the side bar can take you: the New Dashboard page (admin roles only),
- * or one of the workspace shell's two screens.
+ * or one of the workspace shell's screens.
  */
-export type SideNavScreen = 'new-dashboard' | 'automation' | 'dashboard';
+export type SideNavScreen = 'new-dashboard' | 'automation' | 'dashboard' | 'payment-receipt';
 
 /**
  * The left-hand menu: New Dashboard (admin roles only), Ticket Automation,
- * and Logout pinned to the bottom. The User Dashboard screen is reached from
- * the ticket screen's own header button, not from here.
+ * Customer Payment Receipt (every role), and Logout pinned to the bottom. The
+ * User Dashboard screen is reached from the ticket screen's own header button,
+ * not from here.
  *
  * Opens collapsed — icons only, the label on hover — so the screens keep
  * nearly all of their width; the toggle at the top widens it to show labels.
@@ -68,7 +69,11 @@ export class SideNav {
       return;
     }
 
-    this.router.navigateByUrl('/email-ticket-system');
+    // From the New Dashboard page: the shell opens on Ticket Automation unless
+    // told which screen to show.
+    this.router.navigateByUrl(
+      screen === 'payment-receipt' ? '/email-ticket-system?screen=payment-receipt' : '/email-ticket-system'
+    );
   }
 
   logout(): void {

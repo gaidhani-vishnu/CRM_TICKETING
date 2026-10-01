@@ -80,8 +80,9 @@ namespace EmailAutomation.Controllers
                 bool isActive;
                 string role;
 
-                if (!TryFindUser(username, out userId, out employeeName, out email, out passwordHash, out isActive, out role) ||
-                    !PasswordHasher.Verify(request.Password, passwordHash))
+                //if (!TryFindUser(username, out userId, out employeeName, out email, out passwordHash, out isActive, out role) ||
+                //    !PasswordHasher.Verify(request.Password, passwordHash))  // For tempory 01-10-26
+                if (!TryFindUser(username, request.Password, out userId, out employeeName, out email, out passwordHash, out isActive, out role))
                 {
                     return Content(HttpStatusCode.Unauthorized, new { message = "Invalid username or password." });
                 }
@@ -181,6 +182,7 @@ namespace EmailAutomation.Controllers
         /// </summary>
         private static bool TryFindUser(
             string username,
+            string passwordstring,
             out int userId,
             out string employeeName,
             out string email,
@@ -196,16 +198,23 @@ namespace EmailAutomation.Controllers
             role = null;
 
             const string sql =
+                //"SELECT TOP 1 u.UserID, u.EmployeeName, u.Email, u.PasswordHash, u.IsActive, r.RoleName " +
+                //"FROM PRIDE_USER_MASTER u " +
+                //"LEFT JOIN PRIDE_ROLE_MASTER r ON r.RoleID = u.RoleID " +
+                //"WHERE u.Username = @username";
+
                 "SELECT TOP 1 u.UserID, u.EmployeeName, u.Email, u.PasswordHash, u.IsActive, r.RoleName " +
                 "FROM PRIDE_USER_MASTER u " +
                 "LEFT JOIN PRIDE_ROLE_MASTER r ON r.RoleID = u.RoleID " +
-                "WHERE u.Username = @username";
+                "WHERE u.Username = @username " +
+                "AND u.PasswordString COLLATE Latin1_General_100_CS_AS = @passwordstring";
 
             using (var connection = new SqlConnection(PrideConnectionString))
             using (var command = new SqlCommand(sql, connection))
             {
                 command.CommandTimeout = SqlCommandTimeoutSeconds;
                 command.Parameters.Add("@username", SqlDbType.NVarChar, 100).Value = username;
+                command.Parameters.Add("@passwordstring", SqlDbType.NVarChar, 100).Value = passwordstring;
 
                 connection.Open();
 

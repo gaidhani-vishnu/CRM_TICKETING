@@ -173,24 +173,158 @@ describe('UserDashboardService', () => {
     expect(service.summarize(joined).closedCount).toBe(1);
   });
 
-  it('keeps each matrix row total equal to the sum of its stage cells', () => {
+  it('keeps every matrix line equal to the sum of its cells and of the lines under it', () => {
     const rows = [
       row({ threadId: 'a', workflowStatus: '' }),
-      row({ threadId: 'b', workflowStatus: 'Pending Unit Match' }),
-      row({ threadId: 'c', workflowStatus: 'Pending Unit Match' }),
+      row({ threadId: 'b', workflowStatus: 'Pending Unit Match', actionStatus: 'User Intervention' }),
+      row({ threadId: 'c', workflowStatus: 'Pending Unit Match', actionStatus: 'Done' }),
+      row({ threadId: 'd', intent: 'Agreement', subIntent: 'Agreement' }),
     ];
     const tickets = rows.map((r, i) =>
       ticket({ threadId: r.threadId, ticketId: `TKT-${i}` })
     );
 
     const summary = service.summarize(service.join(rows, tickets, [], '2026-09-01'));
+    const sum = (cells: { total: number }[]) => cells.reduce((total, cell) => total + cell.total, 0);
 
     for (const group of summary.groups) {
+      expect(sum(group.cells)).toBe(group.total.total);
+      expect(sum(group.rows.map((r) => r.total))).toBe(group.total.total);
+
       for (const matrixRow of group.rows) {
-        const summed = matrixRow.cells.reduce((total, cell) => total + cell.total, 0);
-        expect(summed).toBe(matrixRow.total.total);
+        expect(sum(matrixRow.cells)).toBe(matrixRow.total.total);
+        expect(sum(matrixRow.steps.map((s) => s.total))).toBe(matrixRow.total.total);
+
+        for (const step of matrixRow.steps) {
+          expect(sum(step.cells)).toBe(step.total.total);
+        }
       }
     }
+
+    // Every open ticket is in the matrix exactly once.
+    expect(sum(summary.groups.map((g) => g.total))).toBe(summary.openCount);
+  });
+
+  it('groups the matrix by intent, then sub-intent, then the step in pipeline order', () => {
+    const rows = [
+      row({ threadId: 'a', workflowStatus: 'Pending Bank Reconciliation' }),
+      row({ threadId: 'b', workflowStatus: '' }),
+      row({ threadId: 'c', workflowStatus: 'Pending Unit Match' }),
+      row({
+        threadId: 'd',
+        category: 'Non-Payment - Customer',
+        intent: 'Agreement',
+        subIntent: 'Agreement',
+        workflowStatus: `Pending ${AGREEMENT_STEPS[4].title}`,
+      }),
+    ];
+    const tickets = rows.map((r, i) => ticket({ threadId: r.threadId, ticketId: `TKT-${i}` }));
+
+    const summary = service.summarize(service.join(rows, tickets, [], '2026-09-01'));
+
+    // By intent, not by category: 'Payment' and 'Agreement', biggest first.
+    expect(summary.groups.map((g) => g.intent)).toEqual(['Payment', 'Agreement']);
+    expect(summary.intents.map((i) => i.intent)).toEqual(['Payment', 'Agreement']);
+
+    const payment = summary.groups[0].rows[0];
+
+    expect(payment.subIntent).toBe('Receipt Request');
+
+    // Only the steps a ticket is on, in pipeline order — but each still
+    // numbered by its place in the payment route, as its pipeline card is.
+    expect(payment.steps.map((s) => s.step)).toEqual([
+      'Ticket Acknowledgement',
+      'Unit Match',
+      'Bank Reconciliation',
+    ]);
+    expect(payment.steps.map((s) => s.number)).toEqual([1, 3, 5]);
+
+    // An agreement thread runs ticket, sender, unit, then the thirteen stages,
+    // so its fifth stage is step 8.
+    const agreement = summary.groups[1].rows[0];
+
+    expect(agreement.steps.map((s) => s.step)).toEqual([AGREEMENT_STEPS[4].title]);
+    expect(agreement.steps.map((s) => s.number)).toEqual([8]);
+
+    // No row of zeros anywhere in the matrix.
+    for (const group of summary.groups) {
+      for (const matrixRow of group.rows) {
+        for (const step of matrixRow.steps) {
+          expect(step.total.total).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('names a step as its pipeline card does, on the route the thread runs', () => {
+    const stepOf = (overrides: Partial<EmailReceiptRow>) =>
+      service.join([row({ threadId: 'a', ...overrides })], [ticket({ threadId: 'a' })], [], '2026-09-01')[0];
+
+    // The column says "Customer Email Match"; the card says Verification.
+    expect(stepOf({ workflowStatus: 'Pending Customer Email Match' }).step).toBe(
+      'Customer Email Verification'
+    );
+
+    // A payment thread's closing step is the Final Email Response.
+    expect(stepOf({ workflowStatus: 'Pending Email Response' }).step).toBe('Final Email Response');
+
+    // A non-payment thread's is the plain reply.
+    const nonPayment = stepOf({
+      category: 'Non-Payment - Customer',
+      workflowStatus: 'Pending Email Response',
+    });
+
+    expect(nonPayment.step).toBe('Email Response');
+    expect(nonPayment.route).toEqual([
+      'Ticket Acknowledgement',
+      'Customer Email Verification',
+      'Unit Match',
+      'Email Response',
+    ]);
+
+    // A system-raised thread is two steps, whatever its intent says.
+    expect(
+      stepOf({ category: 'Non-Payment - System', intent: 'Agreement', subIntent: 'Agreement' }).route
+    ).toEqual(['Ticket Acknowledgement', 'Email Response']);
+
+    // A money step left on an agreement thread from before it had its own
+    // route: the pipeline shows it at the first stage that has not passed.
+    expect(
+      stepOf({
+        category: 'Non-Payment - Customer',
+        intent: 'Agreement',
+        subIntent: 'Agreement',
+        workflowStatus: 'Pending Instrument Match',
+        agreementSteps: { [AGREEMENT_STEPS[0].stepKey]: 'Match' },
+      }).step
+    ).toBe(AGREEMENT_STEPS[1].title);
+  });
+
+  it('counts each ticket under the column its Action Status maps to', () => {
+    const rows = [
+      row({ threadId: 'a', actionStatus: 'Done' }),
+      row({ threadId: 'b', actionStatus: 'User Verification Required' }),
+      row({ threadId: 'c', actionStatus: 'User Intervention' }),
+      row({ threadId: 'd', actionStatus: 'Pending' }),
+      // Never opened in the workflow screen: still the pipeline's to work.
+      row({ threadId: 'e', actionStatus: '' }),
+    ];
+    const tickets = rows.map((r, i) => ticket({ threadId: r.threadId, ticketId: `TKT-${i}` }));
+
+    const joined = service.join(rows, tickets, [], '2026-09-01');
+
+    expect(joined.map((t) => t.actionColumn)).toEqual([
+      'done',
+      'verify',
+      'edit',
+      'processing',
+      'processing',
+    ]);
+
+    const cells = service.summarize(joined).groups[0].cells;
+
+    expect(cells.map((c) => c.column)).toEqual(['done', 'verify', 'edit', 'processing']);
+    expect(cells.map((c) => c.total)).toEqual([1, 1, 1, 2]);
   });
 
   it('makes the SLA buckets sum to the open-ticket count', () => {
@@ -242,48 +376,35 @@ describe('UserDashboardService', () => {
     ]);
   });
 
-  it('names the fourth arc when one category is folded into it', () => {
-    // Four categories is the live shape: the three the donut can colour, plus
-    // Payment - Loan/Bank. The fourth arc is still the de-emphasised slot 0 —
-    // the palette has no fourth hue that clears the contrast floors — but it
-    // carries its own name, because 'Others' would hide a category the Intent
-    // table beside it names in full.
-    const categories = ['A', 'B', 'C', 'Payment - Loan/Bank'];
-    const rows = categories.map((_, i) => row({ threadId: `t${i}` }));
+  it('names the fourth arc, in grey', () => {
+    // The fourth arc is the de-emphasised slot 0 — the palette has no fourth
+    // hue that clears the contrast floors — but it carries its own name.
+    const intents = ['A', 'B', 'C', 'Refund'];
+    const rows = intents.map((intent, i) => row({ threadId: `t${i}`, intent }));
     const tickets = rows.map((r, i) => ticket({ threadId: r.threadId, ticketId: `TKT-${i}` }));
 
-    const joined = service
-      .join(rows, tickets, [], '2026-09-01')
-      .map((t, i) => ({ ...t, category: categories[i] }));
-
-    const summary = service.summarize(joined);
+    const summary = service.summarize(service.join(rows, tickets, [], '2026-09-01'));
 
     expect(summary.intents.length).toBe(4);
-    expect(summary.intents[3].intent).toBe('Payment - Loan/Bank');
+    expect(summary.intents[3].intent).toBe('Refund');
     expect(summary.intents[3].total).toBe(1);
     expect(summary.intents[3].slot).toBe(0);
   });
 
-  it('folds categories past the third into a single Others slice', () => {
-    const categories = ['A', 'B', 'C', 'D', 'E'];
-    const rows = categories.map((_, i) => row({ threadId: `t${i}` }));
+  it('lists every intent in the donut, as the matrix does, greying those past the third', () => {
+    const intents = ['A', 'B', 'C', 'D', 'E'];
+    const rows = intents.map((intent, i) => row({ threadId: `t${i}`, intent }));
     const tickets = rows.map((r, i) => ticket({ threadId: r.threadId, ticketId: `TKT-${i}` }));
 
-    // Renamed after the join rather than in the rows: join() only admits the
-    // categories the workspace lists, and the fold is a property of the pivot.
-    const joined = service
-      .join(rows, tickets, [], '2026-09-01')
-      .map((t, i) => ({ ...t, category: categories[i] }));
+    const summary = service.summarize(service.join(rows, tickets, [], '2026-09-01'));
 
-    const summary = service.summarize(joined);
-
-    expect(summary.intents.length).toBe(4);
-    expect(summary.intents[3].intent).toBe('Others');
-    expect(summary.intents[3].total).toBe(2);
-    expect(summary.intents[3].slot).toBe(0);
-
-    // The matrix does not fold: every real category keeps its own block.
-    expect(summary.groups.length).toBe(5);
+    // No 'Others': the legend and the table name the same intents, in the
+    // same order, in the same colours.
+    expect(summary.intents.map((i) => i.intent)).toEqual(intents);
+    expect(summary.intents.map((i) => i.slot)).toEqual([1, 2, 3, 0, 0]);
+    expect(summary.intentSlices.map((s) => s.name)).toEqual(intents);
+    expect(summary.groups.map((g) => g.intent)).toEqual(intents);
+    expect(summary.groups.map((g) => g.slot)).toEqual([1, 2, 3, 0, 0]);
   });
 
   it('files a blank Assigned To under the CRM head, as the Ticket Automation picker does', () => {

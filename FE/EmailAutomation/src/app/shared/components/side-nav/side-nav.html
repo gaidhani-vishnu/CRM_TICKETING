@@ -49,6 +49,25 @@
       </svg>
       <span class="side-nav-label">Ticket Automation</span>
     </button>
+
+    <!-- Every role: no *ngIf, the same as Ticket Automation. -->
+    <button
+      type="button"
+      class="side-nav-item"
+      [class.active]="active === 'payment-receipt'"
+      [attr.aria-current]="active === 'payment-receipt' ? 'page' : null"
+      (click)="go('payment-receipt')"
+      aria-label="Customer Payment Receipt"
+      data-tooltip="Customer Payment Receipt"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 3h16v18l-3-2-3 2-2-2-2 2-3-2-3 2z"></path>
+        <line x1="8" y1="8" x2="16" y2="8"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+        <line x1="8" y1="16" x2="12" y2="16"></line>
+      </svg>
+      <span class="side-nav-label">Customer Payment Receipt</span>
+    </button>
   </div>
 
   <button type="button" class="side-nav-item side-nav-logout" (click)="logout()" aria-label="Logout" data-tooltip="Logout">

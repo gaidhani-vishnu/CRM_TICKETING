@@ -10,6 +10,7 @@ import {
 import { forkJoin } from 'rxjs';
 
 import { ProjectAssignmentService } from '../../../../core/services/project-assignment.service';
+import { TicketVisibilityService } from '../../../../core/services/ticket-visibility.service';
 import { EmailDateDropdownItem } from '../../models/email-date.model';
 import { EmailReceiptRow } from '../../models/email-receipt.model';
 import { TicketAcknowledgementItem } from '../../models/ticket-acknowledgement.model';
@@ -75,7 +76,8 @@ export class ReceiptsSummary implements OnChanges {
   constructor(
     private readonly api: EmailAutomationService,
     private readonly projectAssignment: ProjectAssignmentService,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly visibility: TicketVisibilityService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -272,7 +274,13 @@ export class ReceiptsSummary implements OnChanges {
       tickets: this.api.acknowledgeTickets(date),
     }).subscribe({
       next: (result) => {
-        this.rows = result.receipts.rows || [];
+        const rows = result.receipts.rows || [];
+
+        // Admin / Pre_Admin count only their own threads; every other role
+        // keeps the whole day here, as before.
+        this.rows = this.visibility.isAssignedOnlyAdmin()
+          ? rows.filter((row) => this.visibility.canSee(row.assignedTo))
+          : rows;
 
         this.ticketByThread = {};
         for (const ticket of result.tickets.tickets || []) {

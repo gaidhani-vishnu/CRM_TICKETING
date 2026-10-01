@@ -1,5 +1,5 @@
 /* ======================================================
-   INTENT × WORKFLOW STAGE MATRIX
+   INTENT / SUB-INTENT / STEP × ACTION STATUS MATRIX
    Every number is a control, so every number carries the
    affordance of one — but only where there is something
    behind it to open.
@@ -75,10 +75,11 @@
 }
 
 /* The table scrolls inside its own box, never the page — both ways.
-   Horizontally because the six stage columns need more width than a third-
-   width viewport gives them, and vertically because the number of rows is
-   the data's to decide: every sub-intent of every intent gets a line, so a
-   busy queue would otherwise push the drill-down off the bottom of the page. */
+   Horizontally because the name column and its counts need more width than a
+   narrow viewport gives them, and vertically because the number of rows is
+   the data's to decide: every sub-intent of every intent gets a line, and
+   every step under it another, so a busy queue would otherwise push the
+   drill-down off the bottom of the page. */
 .table-wrap {
   overflow: auto;
   max-height: 420px;
@@ -86,11 +87,11 @@
 
 .matrix-table {
   width: 100%;
-  min-width: 940px;
+  min-width: 860px;
   border-collapse: collapse;
 
   th {
-    /* Held against the top of .table-wrap, so the stage a column counts stays
+    /* Held against the top of .table-wrap, so what a column counts stays
        readable however far down the matrix you are. */
     position: sticky;
     top: 0;
@@ -109,26 +110,8 @@
     box-shadow: inset 0 -1px 0 #e5e7eb;
     white-space: nowrap;
 
-    &.col-hierarchy { width: 380px; }
+    &.col-hierarchy { width: 420px; }
     &.col-total { width: 84px; }
-  }
-
-  .stage-head {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-
-    .stage-index {
-      display: grid;
-      place-items: center;
-      width: 15px;
-      height: 15px;
-      font-size: 0.58rem;
-      font-weight: 800;
-      color: #6366f1;
-      background: #eef2ff;
-      border-radius: 50%;
-    }
   }
 
   td {
@@ -224,6 +207,28 @@
       color: #2563eb;
     }
   }
+
+  /* The sub-intent's own toggle: one size down, so the two levels of the tree
+     read as parent and child rather than as two equals. */
+  &.small {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 5px;
+  }
+}
+
+.subintent-count-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #475569;
+  background: #e2e8f0;
+  border-radius: 10px;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
 }
 
 .intent-info-cluster {
@@ -263,24 +268,6 @@
     &.series-0 { background: #94a3b8; }
   }
 
-  .subintent-count-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: #475569;
-    background: #e2e8f0;
-    border-radius: 10px;
-    white-space: nowrap;
-    letter-spacing: 0.1px;
-    transition: background 0.12s ease;
-
-    &:hover {
-      background: #cbd5e1;
-      color: #1e293b;
-    }
-  }
 }
 
 .drill-hint {
@@ -332,6 +319,44 @@
   &.last-child td {
     border-bottom: 1px solid #e2e8f0;
   }
+
+  .subintent-cell {
+    cursor: pointer;
+  }
+
+  &.expanded {
+    background: #f8fafc;
+
+    .tree-toggle-btn {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #2563eb;
+    }
+  }
+
+  .subintent-count-chip {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+}
+
+/* ── Grandchild Step Rows (Deepest Level) ─────────────── */
+.child-step-row {
+  background: #ffffff;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  td {
+    padding: 5px 9px;
+    border-bottom: 1px solid #f6f8fb;
+  }
+
+  &.last-child td {
+    border-bottom: 1px solid #e2e8f0;
+  }
 }
 
 .child-row-inner {
@@ -340,6 +365,31 @@
   gap: 8px;
   padding-left: 10px;
   height: 100%;
+}
+
+.step-index {
+  min-width: 22px;
+  padding: 1px 4px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-align: center;
+  color: #6366f1;
+  background: #eef2ff;
+  border-radius: 5px;
+}
+
+.step-name {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.step-link {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #334155;
 }
 
 .tree-rail {
@@ -368,6 +418,13 @@
 
   &.corner .rail-v {
     bottom: 14px; /* Stop at elbow bend for the last child */
+  }
+
+  /* A step row's first rail: the sub-intent level's line passing through.
+     Kept as an empty box under the intent's last sub-intent, where that line
+     has already ended, so the steps stay indented the same either way. */
+  &.hidden .rail-v {
+    display: none;
   }
 }
 

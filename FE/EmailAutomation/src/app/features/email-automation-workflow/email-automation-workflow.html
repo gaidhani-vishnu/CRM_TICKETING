@@ -143,6 +143,7 @@
           [ticketSla]="selectedTicketSla"
           [ticketClosedOn]="selectedTicketClosedOn"
           [ticketCreatedOn]="selectedTicketCreatedOn"
+          [isTicketListEmpty]="visibleReceiptsCount === 0 && !selectedRow"
           (paymentDetailsChanged)="onPaymentDetailsChanged()"
           (assignmentChanged)="onAssignmentChanged()"
           (ticketClosed)="onTicketClosed($event.threadId, $event.slaStatus, $event.closedOn)"

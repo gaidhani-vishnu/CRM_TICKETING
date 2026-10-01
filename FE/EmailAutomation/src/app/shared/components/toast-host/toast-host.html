@@ -1,0 +1,17 @@
+<div class="toast-stack" aria-live="polite">
+  <div
+    *ngFor="let item of (toast.items$ | async) ?? []; trackBy: trackById"
+    class="toast"
+    [class.success]="item.kind === 'success'"
+    [class.info]="item.kind === 'info'"
+    [class.warning]="item.kind === 'warning'"
+    [class.error]="item.kind === 'error'"
+    [attr.role]="item.kind === 'error' ? 'alert' : 'status'"
+  >
+    <div class="toast-text">
+      <strong>{{ item.title }}</strong>
+      <span>{{ item.message }}</span>
+    </div>
+    <button type="button" class="toast-close" (click)="toast.dismiss(item.id)" aria-label="Dismiss">×</button>
+  </div>
+</div>

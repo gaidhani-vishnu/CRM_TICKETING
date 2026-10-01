@@ -1,12 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 
 import { DashboardTicket } from '../user-dashboard/models/user-dashboard.model';
+import { PortalHandoffService } from '../customer-payment-receipt/services/portal-handoff.service';
+import { SideNavScreen } from '../../shared/components/side-nav/side-nav';
 
-/** The two screens the workspace switches between. */
-export type WorkspaceScreen = 'automation' | 'dashboard';
+/** The screens the workspace switches between. */
+export type WorkspaceScreen = 'automation' | 'dashboard' | 'payment-receipt';
 
 /**
- * Holds the two screens of the workspace and the pair of pill buttons that
+ * Holds the screens of the workspace and the pair of pill buttons that
  * switch between them.
  *
  * The switch is in-page rather than routed: the Email Automation screen owns
@@ -24,7 +27,7 @@ export type WorkspaceScreen = 'automation' | 'dashboard';
   templateUrl: './crm-workspace-shell.html',
   styleUrl: './crm-workspace-shell.scss',
 })
-export class CrmWorkspaceShell {
+export class CrmWorkspaceShell implements OnInit {
   screen: WorkspaceScreen = 'automation';
 
   /**
@@ -37,6 +40,33 @@ export class CrmWorkspaceShell {
    */
   pendingThreadId: string | null = null;
 
+  /**
+   * PortalHandoffService is injected here only so it exists from the moment the
+   * workspace loads: after a reload mid-hand-off it resumes waiting for the
+   * Customer Payment Portal's result, whichever screen is showing.
+   */
+  constructor(
+    private readonly route: ActivatedRoute,
+    private readonly portalHandoff: PortalHandoffService
+  ) {}
+
+  ngOnInit(): void {
+    // ?screen=payment-receipt — the side bar's way in from the New Dashboard page.
+    if (this.route.snapshot.queryParamMap.get('screen') === 'payment-receipt') {
+      this.screen = 'payment-receipt';
+    }
+  }
+
+  navigateTo(screen: SideNavScreen): void {
+    if (screen === 'dashboard') {
+      this.showDashboard();
+    } else if (screen === 'payment-receipt') {
+      this.showPaymentReceipt();
+    } else {
+      this.showAutomation();
+    }
+  }
+
   showDashboard(): void {
     this.screen = 'dashboard';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -47,6 +77,11 @@ export class CrmWorkspaceShell {
     // last drilled into rather than the newest thread.
     this.pendingThreadId = null;
     this.screen = 'automation';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  showPaymentReceipt(): void {
+    this.screen = 'payment-receipt';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

@@ -54,6 +54,15 @@ export class AuthService {
     return this.liveSession()?.user ?? null;
   }
 
+  /**
+   * The signed login token, or null when logged out / expired. Sent as
+   * `Authorization: Bearer` by the few calls the backend checks it on — the
+   * Customer Payment Portal hand-off, for now.
+   */
+  get token(): string | null {
+    return this.liveSession()?.token ?? null;
+  }
+
   logout(): void {
     this.clear();
   }

@@ -163,12 +163,15 @@
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\EmailAutomationController.cs" />
     <Compile Include="Controllers\UserMasterController.cs" />
+    <Compile Include="Controllers\CustomerPaymentReceiptController.cs" />
     <Compile Include="Services\BankStatementMatcher.cs" />
     <Compile Include="Services\SpreadsheetPreview.cs" />
     <Compile Include="Services\PasswordHasher.cs" />
     <Compile Include="Services\AuthTokenService.cs" />
+    <Compile Include="Services\PortalHandoffToken.cs" />
     <Compile Include="Models\EmailAutomationModels.cs" />
     <Compile Include="Models\UserMasterModels.cs" />
+    <Compile Include="Models\CustomerPaymentReceiptModels.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -229,6 +232,8 @@
   <ItemGroup>
     <Content Include="App_Data\Scripts\001_auth_role_user_master.sql" />
     <Content Include="App_Data\Scripts\002_user_master_emails.sql" />
+    <Content Include="App_Data\Scripts\PRIDE_PORTAL_HANDOFF.sql" />
+    <Content Include="App_Data\Scripts\SALES_BOOKING_DETAILS_project_indexes.sql" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap.rtl.min.css.map" />
