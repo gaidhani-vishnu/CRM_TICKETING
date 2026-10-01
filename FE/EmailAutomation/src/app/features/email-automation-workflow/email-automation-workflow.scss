@@ -972,9 +972,9 @@
                 .hp-value { color: #5b21b6; }
               }
 
-              /* Ticket card: how the thread was classified. Amber matches the
-                 category chip the panel header used to carry. */
-              .hp-category {
+              /* Ticket card: how the thread was classified. Sub-intent keeps
+                 the amber the category chip used before it replaced it. */
+              .hp-subintent {
                 background: #fffbeb;
                 border-color: #fde68a;
 

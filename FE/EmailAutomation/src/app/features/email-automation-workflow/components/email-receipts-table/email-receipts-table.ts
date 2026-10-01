@@ -180,7 +180,9 @@ export class EmailReceiptsTable implements OnInit, OnChanges, AfterViewInit, OnD
     // the state and the step name find the row.
     { key: 'workflowStatus', label: 'Pending Step' },
     { key: 'actionStatus', label: 'Action Status' },
-    { key: 'category', label: 'Category' },
+    // Category hidden along with its grid column at the client's request;
+    // the 'category' key and its matching logic stay. Uncomment to restore.
+    // { key: 'category', label: 'Category' },
     { key: 'ticketStatus', label: 'Ticket Status' },
     { key: 'assignedTo', label: 'Assigned To' },
     { key: 'status', label: 'Status' },

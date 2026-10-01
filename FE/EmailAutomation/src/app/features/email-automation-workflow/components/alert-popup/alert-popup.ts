@@ -15,6 +15,12 @@ import { EmailReceiptRow } from '../../models/email-receipt.model';
 import { AlertReplyDraft, EmailResponseTemplate } from '../../models/email-response.model';
 import { ThreadReply, ThreadReplyAttachment } from '../../models/thread-reply.model';
 import { ThreadHistoryEntry, ThreadMessage } from '../../models/thread-message.model';
+
+/**
+ * Whatever a file in the history hangs off: a saved reply, by its numeric id
+ * (18), or a mail that came in, by its reference ('13-M').
+ */
+type FileOwner = Pick<ThreadReply | ThreadMessage, 'id'>;
 import { EmailAutomationService } from '../../services/email-automation.service';
 import { EmailResponseTemplateService } from '../../services/email-response-template.service';
 
@@ -316,6 +322,8 @@ export class AlertPopup implements OnChanges {
    */
   private fallbackMessage(row: EmailReceiptRow): ThreadMessage {
     return {
+      id: '',
+      attachments: [],
       messageKey: '',
       threadId: row.threadId,
       // The earliest time there is, so it sorts to the top.
@@ -690,8 +698,8 @@ export class AlertPopup implements OnChanges {
 
   // ── Display helpers ──────────────────────────────────────────
 
-  /** Download URL for one file on a saved reply. */
-  attachmentUrl(reply: ThreadReply, file: ThreadReplyAttachment): string {
+  /** Download URL for one file on a saved reply, or on a mail that came in. */
+  attachmentUrl(reply: FileOwner, file: ThreadReplyAttachment): string {
     return this.api.replyAttachmentUrl(reply.id, file.storedName);
   }
 
@@ -704,10 +712,10 @@ export class AlertPopup implements OnChanges {
    * Images only: a PDF or a sheet has nothing to show at this size, and the
    * browser already renders those better in a tab of their own.
    */
-  preview: { reply: ThreadReply; file: ThreadReplyAttachment } | null = null;
+  preview: { reply: FileOwner; file: ThreadReplyAttachment } | null = null;
 
   /** Opened by clicking an image chip. Closed by its own x, not the popup's. */
-  openPreview(reply: ThreadReply, file: ThreadReplyAttachment): void {
+  openPreview(reply: FileOwner, file: ThreadReplyAttachment): void {
     this.preview = { reply, file };
   }
 
@@ -740,7 +748,7 @@ export class AlertPopup implements OnChanges {
    */
   private readonly downloading = new Set<string>();
 
-  isDownloading(reply: ThreadReply, file: ThreadReplyAttachment): boolean {
+  isDownloading(reply: FileOwner, file: ThreadReplyAttachment): boolean {
     return this.downloading.has(AlertPopup.fileKey(reply, file));
   }
 
@@ -752,7 +760,7 @@ export class AlertPopup implements OnChanges {
    * put these in a new tab before. An object URL is same-origin, so the browser
    * honours both the save and the name the reviewer originally attached it as.
    */
-  download(reply: ThreadReply, file: ThreadReplyAttachment): void {
+  download(reply: FileOwner, file: ThreadReplyAttachment): void {
     const key = AlertPopup.fileKey(reply, file);
 
     if (this.downloading.has(key)) {
@@ -780,7 +788,7 @@ export class AlertPopup implements OnChanges {
   /** Shown under the history when a download fails. '' while nothing has. */
   downloadError = '';
 
-  private static fileKey(reply: ThreadReply, file: ThreadReplyAttachment): string {
+  private static fileKey(reply: FileOwner, file: ThreadReplyAttachment): string {
     return `${reply.id}:${file.storedName}`;
   }
 

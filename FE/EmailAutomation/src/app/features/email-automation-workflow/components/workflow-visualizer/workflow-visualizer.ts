@@ -356,8 +356,37 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     // emitted a stage. Microtask for the same reason as the reset path: the
     // parent is mid-change-detection when its input lands.
     if (changes['ticketId']) {
-      Promise.resolve().then(() => this.repaint());
+      Promise.resolve().then(() => {
+        this.repaint();
+        this.autoAdvancePastTicket();
+      });
     }
+  }
+
+  /**
+   * Ticket Acknowledgement is finished the moment the ticket exists in
+   * PRIDE_TICKET_ACJNOWLEDGEMENT — there is nothing on it for a reviewer to
+   * check — so the pipeline starts Customer Email Match straight away instead
+   * of holding on a "Move to Customer Email Match" button.
+   *
+   * Runs on selecting a thread and again when its ticket lookup lands, which
+   * is usually after the row. Does nothing for a thread already past this
+   * point (stored verdicts replayed), a closed ticket, or a system-raised
+   * thread, whose next step is the reply and needs no start.
+   */
+  private autoAdvancePastTicket(): void {
+    if (
+      !this.ticketId ||
+      !this.selectedRow ||
+      !this.date ||
+      this.isEmailVerificationStarted ||
+      this.isSelectedTicketClosed ||
+      this.isNonPaymentSystemThread
+    ) {
+      return;
+    }
+
+    this.startCustomerEmailVerification();
   }
 
   ngOnDestroy(): void {
@@ -1144,7 +1173,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     }
 
     if (!this.isEmailVerificationStarted) {
-      return 'Ticket raised. Use "Move to Customer Email Match" on the previous step to start.';
+      return 'Ticket raised. Starting Customer Email Match…';
     }
 
     return this.isVerifying
@@ -1569,6 +1598,7 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     Promise.resolve().then(() => {
       this.repaint();
       this.completeUnitFieldsFromBooking();
+      this.autoAdvancePastTicket();
     });
   }
 
@@ -3946,14 +3976,11 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
           'SLA Commitment': this.ticketSla || 'Not raised yet',
           'Status': this.ticketId ? 'DONE' : 'WAITING',
         },
-        // The pipeline only opens once the thread has a ticket number. A
-        // system-raised thread has nowhere to advance to — Customer Email
-        // Match is not on its pipeline at all — so the reply below it opens on
-        // its own instead, the same way it does for an all-duplicate thread.
-        primaryAction:
-          this.ticketId && !this.isEmailVerificationStarted && !this.isNonPaymentSystemThread
-            ? { id: 'start-customer-email-verification', label: 'Move to Customer Email Match →', kind: 'advance' }
-            : undefined,
+        // No click-through: raising the ticket is the whole step, so the
+        // pipeline moves on to Customer Email Match by itself the moment the
+        // ticket exists — see autoAdvancePastTicket(). A system-raised thread
+        // opens its reply below instead.
+        primaryAction: undefined,
         // Nothing for the reviewer to press here. This step raises the ticket
         // and there is nothing on it to verify or correct; its Email Response
         // button was the one that made every card in the pipeline look like a

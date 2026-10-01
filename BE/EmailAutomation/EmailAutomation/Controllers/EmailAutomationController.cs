@@ -1671,6 +1671,11 @@ ORDER BY ProjectBankAccountId";
         /// is checked against the shape the pipeline actually writes rather than
         /// trusted: anything carrying a separator, a drive or ".." is refused before
         /// it can climb out of the attachments root.
+        ///
+        /// Only a POR thread ("POR-809b50e7") keeps its files straight in
+        /// {AttachmentsFolderPath}\{Thread ID}\. Every other thread ("THR-7dcb836d")
+        /// is served from the folder of its first mail instead -- see
+        /// FirstMessageFolderOrNull.
         /// </summary>
         private static string ThreadFolderOrNull(string threadId)
         {
@@ -1681,12 +1686,133 @@ ORDER BY ProjectBankAccountId";
                 return null;
             }
 
+            if (!name.StartsWith(PorThreadIdPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return FirstMessageFolderOrNull(name);
+            }
+
             var root = Path.GetFullPath(AttachmentsFolderPath);
             var folder = Path.GetFullPath(Path.Combine(root, name));
 
             // Belt and braces: even a name that passed the pattern must still resolve
             // to somewhere inside the root.
             return folder.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? folder : null;
+        }
+
+        /// <summary>
+        /// What turns a main_email_messages.[ID] into the reference its attachments
+        /// are filed under ("13-M"): the name of its folder and its Reply_ID in
+        /// PRIDE_EMAIL_REPLY_ATTACHMENT. Only a mail carries it -- a reply written
+        /// in the app keeps its bare PRIDE_EMAIL_REPLY.ID ("18").
+        /// </summary>
+        private const string MessageRefSuffix = "-M";
+
+        /// <summary>What a POR thread's id starts with.</summary>
+        private const string PorThreadIdPrefix = "POR-";
+
+        /// <summary>
+        /// The attachment folder of the first mail on a thread:
+        /// {ReplyAttachmentsFolderPath}\{Thread ID}\{main_email_messages.ID}-M\
+        /// (e.g. ...\reply-attachments\THR-33c4daf3\13-M\), or null when the
+        /// thread id is not a plain name.
+        ///
+        /// A thread with no mail recorded gets the folder of message 0, which the
+        /// identity column never issues, so it reads as a thread with no
+        /// attachments rather than as a bad request.
+        /// </summary>
+        private static string FirstMessageFolderOrNull(string threadId)
+        {
+            var threadFolder = ReplyThreadFolderOrNull(threadId);
+
+            if (threadFolder == null)
+            {
+                return null;
+            }
+
+            var messageId = ReadFirstMessageId(threadId);
+
+            return Path.Combine(threadFolder, messageId.ToString(CultureInfo.InvariantCulture) + MessageRefSuffix);
+        }
+
+        /// <summary>The [ID] of the first mail recorded against a thread, or 0 when there is none.</summary>
+        private static int ReadFirstMessageId(string threadId)
+        {
+            const string sql = "SELECT MIN([ID]) FROM main_email_messages WHERE [Thread ID] = @threadId";
+
+            return ReadWithDeadlockRetry(() =>
+            {
+                using (var connection = new SqlConnection(PrideConnectionString))
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.CommandTimeout = SqlCommandTimeoutSeconds;
+                    command.Parameters.Add("@threadId", SqlDbType.NVarChar, 128).Value = threadId;
+
+                    connection.Open();
+
+                    var value = command.ExecuteScalar();
+
+                    return value == null || value == DBNull.Value ? 0 : Convert.ToInt32(value);
+                }
+            });
+        }
+
+        /// <summary>
+        /// The files PRIDE_EMAIL_REPLY_ATTACHMENT records against one incoming
+        /// mail, by its Reply_ID ("13-M").
+        ///
+        /// Only a mail's reference carries the "-M"; a reply written in the app
+        /// keeps its bare PRIDE_EMAIL_REPLY.ID ("18") in the same column, so the
+        /// two never match each other's rows. Named by Stored_Name, since that is
+        /// the name the file has on disk and the one the popup asks for it by. A
+        /// row whose file is no longer in the folder is left out.
+        /// </summary>
+        private static List<ThreadAttachment> ReadMessageAttachments(string messageRef, string folder)
+        {
+            var sql =
+                "SELECT Stored_Name, Extension, Size_Bytes, Created_On " +
+                $"FROM {ReplyAttachmentTable} WHERE Reply_ID = @replyId ORDER BY ID";
+
+            return ReadWithDeadlockRetry(() =>
+            {
+                var files = new List<ThreadAttachment>();
+
+                using (var connection = new SqlConnection(PrideConnectionString))
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.CommandTimeout = SqlCommandTimeoutSeconds;
+                    command.Parameters.Add("@replyId", SqlDbType.VarChar, 30).Value = messageRef;
+
+                    connection.Open();
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var storedName = ReadString(reader, "Stored_Name");
+
+                            if (storedName.Length == 0 || !File.Exists(Path.Combine(folder, storedName)))
+                            {
+                                continue;
+                            }
+
+                            var extension = ReadString(reader, "Extension").ToLowerInvariant();
+
+                            files.Add(new ThreadAttachment
+                            {
+                                FileName = storedName,
+                                Extension = extension,
+                                SizeBytes = reader["Size_Bytes"] == DBNull.Value ? 0 : Convert.ToInt64(reader["Size_Bytes"]),
+                                Modified = reader["Created_On"] == DBNull.Value
+                                    ? string.Empty
+                                    : Convert.ToDateTime(reader["Created_On"]).ToString("s", CultureInfo.InvariantCulture),
+                                IsImage = ImageExtensions.Contains(extension)
+                            });
+                        }
+                    }
+                }
+
+                return files;
+            });
         }
 
         /// <summary>
@@ -1717,6 +1843,16 @@ ORDER BY ProjectBankAccountId";
 
             if (!response.FolderExists)
             {
+                return Ok(response);
+            }
+
+            // Anything but a POR thread lists what PRIDE_EMAIL_REPLY_ATTACHMENT
+            // records against its first mail, whose Reply_ID is the folder's own
+            // name: main_email_messages.ID with "-M" after it ("13-M").
+            if (!threadId.Trim().StartsWith(PorThreadIdPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                response.Files = ReadMessageAttachments(Path.GetFileName(folder), folder);
+
                 return Ok(response);
             }
 
@@ -2560,17 +2696,26 @@ ORDER BY ProjectBankAccountId";
             var tickets = AcknowledgeThreadTickets(
                 threads, reportDate.Year, out serverTime, out closedTickets);
 
-            // A freshly raised ticket starts owned by the configured fallback
-            // user; Unit Match reassigns it later through assign-thread.
+            // A freshly raised ticket starts owned by the CRM head from
+            // Web.config; Unit Match reassigns it later through assign-thread.
+            // The caller's defaultAssignee only stands in when the key is unset.
+            // Every open ticket, not only new ones, so one raised while no
+            // default was configured is filled too — AssignDefaultOwner only
+            // ever writes a blank [Assigned To], never replaces an owner.
+            var crmHead = ConfigurationManager.AppSettings["CRMHead"];
+
             AssignDefaultOwner(
                 emailDates,
-                tickets.Where(t => t.IsNew).Select(t => t.ThreadId).ToList(),
-                request.DefaultAssignee);
+                tickets.Select(t => t.ThreadId).ToList(),
+                string.IsNullOrWhiteSpace(crmHead) ? request.DefaultAssignee : crmHead);
 
-            // A new ticket names the step it now waits on straight away, so the
-            // grid's Pending Step reads "Customer Email Match / Pending" rather
-            // than blank until someone opens the thread.
-            SeedPendingStep(emailDates, tickets.Where(t => t.IsNew).Select(t => t.ThreadId).ToList());
+            // A ticketed thread names the step it now waits on straight away, so
+            // the grid's Pending Step reads "Customer Email Match / Pending"
+            // rather than blank until someone opens the thread. Every open
+            // ticket, not only new ones: one raised before this seeding existed,
+            // or whose seed failed, would otherwise stay blank for good.
+            // SeedPendingStep leaves any row that already has a value alone.
+            SeedPendingStep(emailDates, tickets.Select(t => t.ThreadId).ToList());
 
             return Ok(new TicketAcknowledgementResponse
             {
@@ -4277,8 +4422,9 @@ WHERE  Ticket_ID = @ticketId
         /// The name is resolved by the caller rather than here, and deliberately
         /// so: the project → users mapping, its wing parsing ("WELLINGTON - E-H-J-K"
         /// against Project "Wellington" + Sub Project "E") and its CRM-head fallback
-        /// all live in config.json, which the UI reads. Re-implementing that here
-        /// would be a second copy of the rules to keep in step with the first.
+        /// all live in config.json, which the UI reads. The one exception is the
+        /// hourly auto-check, which has no UI to ask: it runs a mirror of the same
+        /// rule (AssignAutoCheckOwner) and must be kept in step with it.
         ///
         /// Called when Unit Match settles: the first mapped user on a match, the
         /// configured fallback user when the unit did not match.
@@ -5883,7 +6029,7 @@ ORDER BY CASE WHEN RECEIPT_STATUS = @cancelled THEN 1 ELSE 0 END, RECEIPT_ID DES
         private static List<ThreadMessageRow> ReadThreadMessages(string threadId)
         {
             const string sql = @"
-SELECT   [Message Key], [Thread ID], [Received Time], Subject, [Message Text]
+SELECT   [ID], [Message Key], [Thread ID], [Received Time], Subject, [Message Text]
 FROM     main_email_messages
 WHERE    [Thread ID] = @threadId";
 
@@ -5911,6 +6057,8 @@ WHERE    [Thread ID] = @threadId";
                                 hasTime ? parsed : (DateTime?)null,
                                 new ThreadMessageRow
                                 {
+                                    Id = ReadString(reader, "ID") + MessageRefSuffix,
+                                    Attachments = new List<ThreadReplyAttachmentRow>(),
                                     MessageKey = ReadString(reader, "Message Key"),
                                     ThreadId = ReadString(reader, "Thread ID"),
                                     // "o", as ReadThreadReplies sends Created_On, so both
@@ -5929,11 +6077,83 @@ WHERE    [Thread ID] = @threadId";
             });
 
             // OrderBy is stable, so unparseable times keep their read order.
-            return read
+            var messages = read
                 .OrderBy(r => r.Key.HasValue ? 0 : 1)
                 .ThenBy(r => r.Key ?? DateTime.MaxValue)
                 .Select(r => r.Value)
                 .ToList();
+
+            if (messages.Count > 0)
+            {
+                AttachMessageFiles(messages);
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Fills in the Attachments list of every mail in one read: the rows of
+        /// PRIDE_EMAIL_REPLY_ATTACHMENT whose Reply_ID is the mail's reference
+        /// ("13-M"). The files themselves are under
+        /// {ReplyAttachmentsFolderPath}\{Thread ID}\{reference}\.
+        /// </summary>
+        private static void AttachMessageFiles(List<ThreadMessageRow> messages)
+        {
+            var byRef = new Dictionary<string, ThreadMessageRow>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var message in messages)
+            {
+                byRef[message.Id] = message;
+            }
+
+            var names = new List<string>();
+
+            using (var connection = new SqlConnection(PrideConnectionString))
+            using (var command = new SqlCommand())
+            {
+                command.Connection = connection;
+                command.CommandTimeout = SqlCommandTimeoutSeconds;
+
+                var i = 0;
+
+                foreach (var reference in byRef.Keys)
+                {
+                    var name = "@r" + i++;
+                    command.Parameters.Add(name, SqlDbType.VarChar, 30).Value = reference;
+                    names.Add(name);
+                }
+
+                command.CommandText =
+                    "SELECT ID, Reply_ID, File_Name, Stored_Name, Extension, Size_Bytes " +
+                    $"FROM {ReplyAttachmentTable} WHERE Reply_ID IN ({string.Join(", ", names)}) ORDER BY ID";
+
+                connection.Open();
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        ThreadMessageRow message;
+
+                        if (!byRef.TryGetValue(ReadString(reader, "Reply_ID"), out message))
+                        {
+                            continue;
+                        }
+
+                        var extension = ReadString(reader, "Extension").ToLowerInvariant();
+
+                        message.Attachments.Add(new ThreadReplyAttachmentRow
+                        {
+                            Id = Convert.ToInt32(reader["ID"]),
+                            FileName = ReadString(reader, "File_Name"),
+                            StoredName = ReadString(reader, "Stored_Name"),
+                            Extension = extension,
+                            SizeBytes = reader["Size_Bytes"] == DBNull.Value ? 0 : Convert.ToInt64(reader["Size_Bytes"]),
+                            IsImage = ImageExtensions.Contains(extension)
+                        });
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -6121,9 +6341,12 @@ WHERE    [Thread ID] = @threadId";
         /// </summary>
         [HttpGet]
         [Route("reply-attachment")]
-        public IHttpActionResult GetReplyAttachment(int replyId, string fileName)
+        public IHttpActionResult GetReplyAttachment(string replyId, string fileName)
         {
-            if (replyId <= 0)
+            // A reply's own id ("18"), or the reference of a mail that came in ("13-M").
+            var reference = (replyId ?? string.Empty).Trim();
+
+            if (reference.Length == 0)
             {
                 return Content(HttpStatusCode.BadRequest, new { message = "'replyId' is required." });
             }
@@ -6137,7 +6360,7 @@ WHERE    [Thread ID] = @threadId";
                 return Content(HttpStatusCode.BadRequest, new { message = "'fileName' must be a plain file name." });
             }
 
-            var folder = ReplyFolderOrNull(replyId);
+            var folder = ReplyReferenceFolderOrNull(reference);
             var path = folder == null ? null : Path.Combine(folder, name);
 
             if (path == null || !File.Exists(path))
@@ -6491,7 +6714,8 @@ ORDER BY Created_On ASC, ID ASC";
                 foreach (var reply in replies)
                 {
                     var name = "@r" + i++;
-                    command.Parameters.Add(name, SqlDbType.Int).Value = reply.Id;
+                    command.Parameters.Add(name, SqlDbType.VarChar, 30).Value =
+                        reply.Id.ToString(CultureInfo.InvariantCulture);
                     names.Add(name);
                 }
 
@@ -6505,11 +6729,13 @@ ORDER BY Created_On ASC, ID ASC";
                 {
                     while (reader.Read())
                     {
-                        var replyId = Convert.ToInt32(reader["Reply_ID"]);
+                        int replyId;
 
                         ThreadReplyRow reply;
 
-                        if (!byId.TryGetValue(replyId, out reply))
+                        if (!int.TryParse(ReadString(reader, "Reply_ID").Trim(), NumberStyles.Integer,
+                                CultureInfo.InvariantCulture, out replyId)
+                            || !byId.TryGetValue(replyId, out reply))
                         {
                             continue;
                         }
@@ -6678,7 +6904,8 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             {
                 command.CommandTimeout = SqlCommandTimeoutSeconds;
 
-                command.Parameters.Add("@replyId", SqlDbType.Int).Value = replyId;
+                command.Parameters.Add("@replyId", SqlDbType.VarChar, 30).Value =
+                    replyId.ToString(CultureInfo.InvariantCulture);
                 command.Parameters.Add("@fileName", SqlDbType.NVarChar, 260).Value = fileName;
                 command.Parameters.Add("@storedName", SqlDbType.NVarChar, 260).Value = storedName;
                 command.Parameters.Add("@extension", SqlDbType.VarChar, 20).Value =
@@ -6731,6 +6958,54 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             var folder = Path.GetFullPath(Path.Combine(root, name));
 
             return folder.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? folder : null;
+        }
+
+        /// <summary>
+        /// The folder a Reply_ID names, or null when it names none.
+        ///
+        /// A bare number is a reply written in the app, filed under the thread on
+        /// its PRIDE_EMAIL_REPLY row. A number with "-M" after it is a mail that
+        /// came in, filed under the thread on its main_email_messages row.
+        /// </summary>
+        private static string ReplyReferenceFolderOrNull(string reference)
+        {
+            int id;
+
+            if (!reference.EndsWith(MessageRefSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return int.TryParse(reference, NumberStyles.None, CultureInfo.InvariantCulture, out id)
+                    ? ReplyFolderOrNull(id)
+                    : null;
+            }
+
+            var number = reference.Substring(0, reference.Length - MessageRefSuffix.Length);
+
+            if (!int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out id) || id <= 0)
+            {
+                return null;
+            }
+
+            var threadFolder = ReplyThreadFolderOrNull(ReadMessageThreadId(id));
+
+            return threadFolder == null
+                ? null
+                : Path.Combine(threadFolder, id.ToString(CultureInfo.InvariantCulture) + MessageRefSuffix);
+        }
+
+        private static string ReadMessageThreadId(int messageId)
+        {
+            using (var connection = new SqlConnection(PrideConnectionString))
+            using (var command = new SqlCommand("SELECT [Thread ID] FROM main_email_messages WHERE [ID] = @id", connection))
+            {
+                command.CommandTimeout = SqlCommandTimeoutSeconds;
+                command.Parameters.Add("@id", SqlDbType.Int).Value = messageId;
+
+                connection.Open();
+
+                var value = command.ExecuteScalar();
+
+                return value == null || value == DBNull.Value ? string.Empty : value.ToString().Trim();
+            }
         }
 
         private static string ReadReplyThreadId(int replyId)
@@ -7067,7 +7342,7 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                     string nextStatus;
                     string message;
 
-                    var passed = RunAutoCheckStep(step, date, row, out nextStatus, out message);
+                    var passed = RunAutoCheckStep(step, date, emailDates, binding, row, out nextStatus, out message);
 
                     if (!passed)
                     {
@@ -7134,7 +7409,13 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
         /// <param name="nextStatus">[Workflow Status] as the step left it.</param>
         /// <param name="message">The step's own message — why it passed or stopped.</param>
         private bool RunAutoCheckStep(
-            string step, string date, EmailReceiptRow row, out string nextStatus, out string message)
+            string step,
+            string date,
+            List<string> emailDates,
+            ThreadBinding binding,
+            EmailReceiptRow row,
+            out string nextStatus,
+            out string message)
         {
             nextStatus = $"Pending {step}";
             string error;
@@ -7208,7 +7489,44 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                     message = matched.Message;
                     nextStatus = matched.WorkflowStatus;
 
-                    return matched.Matched;
+                    if (!matched.Matched)
+                    {
+                        return false;
+                    }
+
+                    // What the UI's assignOwner() does after a matched unit: the
+                    // booking's stage picks the owner, who is written into
+                    // [Assigned To] before the thread moves on. Without it an
+                    // auto-checked thread would carry no owner at all.
+                    string ownerError;
+                    var ownerReason = AssignAutoCheckOwner(
+                        emailDates, binding, row, matched.Bookings?.FirstOrDefault(), out ownerError);
+
+                    if (ownerReason == null)
+                    {
+                        // Unit Match is not finished until the thread has an
+                        // owner, so it is put back to wait on that step. A
+                        // reviewer's Verify re-runs it and assignOwner() settles
+                        // the owner on screen.
+                        nextStatus = PendingUnitMatch;
+                        message = $"Unit matched, but the owner could not be assigned: {ownerError} " +
+                                  "Press Verify on Unit Match to assign it.";
+
+                        try
+                        {
+                            UpdateReceiptColumn(emailDates, binding, "Workflow Status", PendingUnitMatch);
+                        }
+                        catch (Exception)
+                        {
+                            // Parked either way; [Action Status] keeps it out of the queue.
+                        }
+
+                        return false;
+                    }
+
+                    message = $"{matched.Message} {ownerReason}";
+
+                    return true;
                 }
 
                 case InstrumentMatchStep:
@@ -7347,6 +7665,326 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             var space = value.IndexOf(' ');
 
             return space < 0 ? value : value.Substring(space + 1).Trim();
+        }
+
+        // ── AUTO-CHECK: thread owner after a matched unit ────────────
+        //
+        // The same rule the UI runs in assignOwner() → SlotAssignmentService →
+        // ProjectAssignmentService, read from the same config.json, so a thread
+        // the hourly run matches ends up with the owner a reviewer's Verify
+        // would have given it. Each method below names the FE method it mirrors;
+        // a change to the rule has to be made on both sides.
+
+        /// <summary>The three slots, in journey order — CRM_SLOTS in app-config.model.ts.</summary>
+        private static readonly string[] AutoCheckCrmSlots = { "Pre-Agreement", "Post-Agreement", "Post-Possession" };
+
+        /// <summary>The parts of the UI's config.json the owner rule reads.</summary>
+        private sealed class UiOwnerConfig
+        {
+            public List<UiConfigUser> Users { get; set; }
+            public List<UiConfigProjectMapping> ProjectMappings { get; set; }
+            public Dictionary<string, List<string>> BookingStatusSlots { get; set; }
+            public UiConfigUser FallbackUser { get; set; }
+        }
+
+        private sealed class UiConfigUser
+        {
+            public string Name { get; set; }
+            public string EmailId { get; set; }
+
+            /// <summary>"Slot" in the file; Json.NET's case-insensitive match also takes "slot".</summary>
+            public string Slot { get; set; }
+        }
+
+        private sealed class UiConfigProjectMapping
+        {
+            public string Company { get; set; }
+            public string ProjectName { get; set; }
+            public List<string> Users { get; set; }
+        }
+
+        /// <summary>One owner decision — SlotAssignmentDecision.</summary>
+        private sealed class AutoCheckOwnerDecision
+        {
+            public string UserName { get; set; }
+            public string Slot { get; set; }
+            public string Reason { get; set; }
+            public List<string> Pool { get; set; }
+        }
+
+        /// <summary>
+        /// Settles the owner of a matched thread and writes it into [Assigned To].
+        /// Returns the line the pipeline card prints for it, or null — with the
+        /// reason in <paramref name="error"/> — when the owner could not be settled
+        /// or stored.
+        /// </summary>
+        private static string AssignAutoCheckOwner(
+            List<string> emailDates, ThreadBinding binding, EmailReceiptRow row,
+            CustomerBookingMatch booking, out string error)
+        {
+            error = null;
+
+            try
+            {
+                var config = LoadUiOwnerConfig();
+                var decision = ResolveAutoCheckOwner(config, true, booking?.BookingStatusName, row.Project, row.SubProject);
+                var name = (decision.UserName ?? string.Empty).Trim();
+
+                if (name.Length == 0)
+                {
+                    error = "config.json names no owner and no fallbackUser.";
+                    return null;
+                }
+
+                if (!UpdateReceiptColumn(emailDates, binding, "Assigned To", name))
+                {
+                    error = $"Thread {row.ThreadId} has no {ReceiptsTable} row to write [Assigned To] on.";
+                    return null;
+                }
+
+                return AutoCheckAssignmentReason(config, decision);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Reads the UI's config.json from the UiConfigJsonPath appSetting. Read on
+        /// every call, not cached: the CRM team edits that file on the server, and
+        /// an edit should reach the next run the way a browser refresh reaches the UI.
+        /// </summary>
+        private static UiOwnerConfig LoadUiOwnerConfig()
+        {
+            var configuredPath = ConfigurationManager.AppSettings["UiConfigJsonPath"];
+
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                throw new ConfigurationErrorsException("Web.config is missing the 'UiConfigJsonPath' appSetting.");
+            }
+
+            var path = configuredPath.StartsWith("~")
+                ? HostingEnvironment.MapPath(configuredPath)
+                : configuredPath;
+
+            if (!File.Exists(path))
+            {
+                throw new FileNotFoundException($"config.json was not found at \"{path}\" (UiConfigJsonPath).");
+            }
+
+            var config = Newtonsoft.Json.JsonConvert.DeserializeObject<UiOwnerConfig>(File.ReadAllText(path))
+                         ?? new UiOwnerConfig();
+
+            config.Users = config.Users ?? new List<UiConfigUser>();
+            config.ProjectMappings = config.ProjectMappings ?? new List<UiConfigProjectMapping>();
+            config.BookingStatusSlots = config.BookingStatusSlots ?? new Dictionary<string, List<string>>();
+
+            // ConfigService.fallbackUser's built-in default, for a file without the section.
+            config.FallbackUser = config.FallbackUser ?? new UiConfigUser { Name = "CRM_Head" };
+
+            return config;
+        }
+
+        /// <summary>SlotAssignmentService.resolve.</summary>
+        private static AutoCheckOwnerDecision ResolveAutoCheckOwner(
+            UiOwnerConfig config, bool unitMatched, string bookingStatusName, string project, string subProject)
+        {
+            if (!unitMatched)
+            {
+                return AutoCheckHeadOwner(config, "unit-unmatched", null, new List<string>());
+            }
+
+            var slot = AutoCheckSlotForBookingStatus(config, bookingStatusName);
+
+            if (slot == null)
+            {
+                return AutoCheckHeadOwner(config, "unknown-status", null, new List<string>());
+            }
+
+            // SlotAssignmentService.byMapping
+            bool fallback;
+            var mapped = AutoCheckProjectUsers(project, subProject, config, out fallback);
+
+            if (fallback)
+            {
+                return AutoCheckHeadOwner(config, "no-slot-user", slot, new List<string>());
+            }
+
+            var inSlot = config.Users
+                .Where(user => AutoCheckSlotOf(user) == slot)
+                .Select(user => AutoCheckNameKey(user.Name))
+                .ToList();
+
+            var eligible = mapped.Where(name => inSlot.Contains(AutoCheckNameKey(name))).ToList();
+
+            if (eligible.Count == 0)
+            {
+                return AutoCheckHeadOwner(config, "no-slot-user", slot, mapped);
+            }
+
+            return new AutoCheckOwnerDecision { UserName = eligible[0], Slot = slot, Reason = "slot-mapping", Pool = mapped };
+        }
+
+        /// <summary>SlotAssignmentService.head.</summary>
+        private static AutoCheckOwnerDecision AutoCheckHeadOwner(
+            UiOwnerConfig config, string reason, string slot, List<string> pool)
+        {
+            return new AutoCheckOwnerDecision { UserName = config.FallbackUser.Name, Slot = slot, Reason = reason, Pool = pool };
+        }
+
+        /// <summary>
+        /// ProjectAssignmentService.getAssignment: the users of every mapping whose
+        /// project matches and whose wings cover the sub-project (or that lists no
+        /// wings), in config.json order and deduped. <paramref name="fallback"/> is
+        /// its 'fallback' match level, where the users are the CRM head.
+        /// </summary>
+        private static List<string> AutoCheckProjectUsers(
+            string project, string subProject, UiOwnerConfig config, out bool fallback)
+        {
+            fallback = true;
+
+            var head = new List<string> { config.FallbackUser.Name };
+            var projectKey = AutoCheckNameKey(project);
+            var wingKey = AutoCheckNameKey(subProject);
+
+            if (projectKey.Length == 0)
+            {
+                return head;
+            }
+
+            var exact = new List<UiConfigProjectMapping>();
+
+            foreach (var mapping in config.ProjectMappings)
+            {
+                // ProjectAssignmentService.parsedMappings: walk back over short
+                // codes (A, D, A1, B2) as wings; stop at the first real word.
+                var tokens = Regex.Split((mapping.ProjectName ?? string.Empty).ToUpperInvariant(), @"[-\s]+")
+                    .Where(t => t.Length > 0)
+                    .ToList();
+
+                var end = tokens.Count;
+                var wings = new List<string>();
+
+                while (end > 1 && Regex.IsMatch(tokens[end - 1], @"^[A-Z]\d?$"))
+                {
+                    wings.Insert(0, tokens[end - 1]);
+                    end--;
+                }
+
+                var baseName = string.Join(" ", tokens.Take(end));
+
+                if (baseName == projectKey &&
+                    (wings.Count == 0 || (wingKey.Length > 0 && wings.Contains(wingKey))))
+                {
+                    exact.Add(mapping);
+                }
+            }
+
+            if (exact.Count == 0)
+            {
+                return head;
+            }
+
+            fallback = false;
+
+            // ProjectAssignmentService.toUsers
+            var seen = new HashSet<string>();
+            var users = new List<string>();
+
+            foreach (var name in exact.SelectMany(m => m.Users ?? new List<string>()))
+            {
+                var key = AutoCheckNameKey(name);
+
+                if (key.Length > 0 && seen.Add(key))
+                {
+                    users.Add(name.Trim());
+                }
+            }
+
+            return users;
+        }
+
+        /// <summary>
+        /// ConfigService.slotForBookingStatus: a status line spelt with a spaced
+        /// slash ("ALLOTMENT LETTER / LOI") also matches each side of it.
+        /// </summary>
+        private static string AutoCheckSlotForBookingStatus(UiOwnerConfig config, string status)
+        {
+            var key = AutoCheckStatusKey(status);
+
+            if (key.Length == 0)
+            {
+                return null;
+            }
+
+            foreach (var slot in AutoCheckCrmSlots)
+            {
+                List<string> statuses;
+
+                if (!config.BookingStatusSlots.TryGetValue(slot, out statuses) || statuses == null)
+                {
+                    continue;
+                }
+
+                foreach (var line in statuses)
+                {
+                    var names = new[] { line }.Concat((line ?? string.Empty).Split(new[] { " / " }, StringSplitOptions.None));
+
+                    if (names.Any(name => AutoCheckStatusKey(name) == key))
+                    {
+                        return slot;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>ConfigService.slotOf.</summary>
+        private static string AutoCheckSlotOf(UiConfigUser user)
+        {
+            var written = AutoCheckStatusKey(user?.Slot);
+
+            return written.Length == 0
+                ? null
+                : AutoCheckCrmSlots.FirstOrDefault(slot => AutoCheckStatusKey(slot) == written);
+        }
+
+        /// <summary>ConfigService.statusKey: upper case, every run of punctuation or space as one space.</summary>
+        private static string AutoCheckStatusKey(string value)
+        {
+            return Regex.Replace((value ?? string.Empty).ToUpperInvariant(), "[^A-Z0-9]+", " ").Trim();
+        }
+
+        /// <summary>Names and project keys are compared trimmed and upper-cased, as on the UI side.</summary>
+        private static string AutoCheckNameKey(string value)
+        {
+            return (value ?? string.Empty).Trim().ToUpperInvariant();
+        }
+
+        /// <summary>workflow-visualizer.ts assignmentReason, for a run that had the booking.</summary>
+        private static string AutoCheckAssignmentReason(UiOwnerConfig config, AutoCheckOwnerDecision decision)
+        {
+            var head = config.FallbackUser.Name;
+
+            switch (decision.Reason)
+            {
+                case "unit-unmatched":
+                    return $"Unit did not match, so {head} owns this thread.";
+
+                case "slot-mapping":
+                    return $"{decision.UserName} is the first {decision.Slot} owner this project maps to.";
+
+                case "no-slot-user":
+                    return decision.Pool.Count > 0
+                        ? $"None of this project's owners ({string.Join(", ", decision.Pool)}) works the {decision.Slot} stage, so {head} has it."
+                        : $"Nobody is set up for the {decision.Slot} stage, so {head} has it.";
+
+                default:
+                    return $"User intervention required — the booking status is blank or is not one config.json stages, so {head} holds it. Use Edit & Save to pick the owner.";
+            }
         }
     }
 }

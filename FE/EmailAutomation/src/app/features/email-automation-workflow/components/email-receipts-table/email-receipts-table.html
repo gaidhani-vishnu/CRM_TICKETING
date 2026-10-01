@@ -544,7 +544,10 @@
           <th class="pending-step-head">Pending Step</th>
           <th class="pending-state-head">State</th>
           <th class="action-status-head">Action Status</th>
-          <th>Category</th>
+          <!-- Category column hidden from the grid at the client's request.
+               Display only: row.category still drives search, filters and the
+               allowed-category rule. Uncomment here and in the row to restore. -->
+          <!-- <th>Category</th> -->
           <th>Ticket Status</th>
           <th>Assigned To</th>
           <th>Status</th>
@@ -630,7 +633,8 @@
             >{{ status }}</span>
             <ng-template #noAction><span class="empty-cell">—</span></ng-template>
           </td>
-          <td>{{ row.category }}</td>
+          <!-- <td>{{ row.category }}</td> -->  <!-- Category hidden, see header -->
+
           <td>
             <span *ngIf="ticketStatus(row) as status; else noStatus" [ngClass]="ticketStatusClass(status)">
               {{ status }}

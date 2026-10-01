@@ -34,6 +34,8 @@ function emptyReplies(threadId = 'THR-c512a5c5'): ThreadRepliesResponse {
 
 function message(receivedTime: string, messageText: string): ThreadMessage {
   return {
+    id: '13-M',
+    attachments: [],
     messageKey: `<${receivedTime}@mail>`,
     threadId: 'THR-33c4daf3',
     receivedTime,

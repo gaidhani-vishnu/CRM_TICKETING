@@ -8,15 +8,17 @@
   display: block;
   flex-shrink: 0;
   height: 100vh;
+  height: 100dvh;
 }
 
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 220px;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 150px;
   height: 100%;
-  padding: 12px 10px;
+  padding: 10px 6px;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 27, 75, 0.96) 100%);
   border-right: 1px solid rgba(129, 140, 248, 0.18);
   box-shadow: 4px 0 18px rgba(0, 0, 0, 0.25);
@@ -24,7 +26,7 @@
   transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
   &.collapsed {
-    width: 64px;
+    width: 48px;
     // Labels are already gone at this width; letting it overflow is what lets
     // the hover name below sit outside the bar instead of being clipped.
     overflow: visible;
@@ -32,6 +34,14 @@
     .side-nav-label {
       opacity: 0;
       width: 0;
+      white-space: nowrap;
+    }
+
+    .side-nav-toggle,
+    .side-nav-item {
+      justify-content: center;
+      gap: 0;
+      padding: 0;
     }
 
     /* Icons only: the item's name appears beside it on hover or focus. */
@@ -45,7 +55,7 @@
         top: 50%;
         z-index: 1100;
         padding: 6px 12px;
-        font-size: 0.76rem;
+        font-size: 0.7rem;
         font-weight: 650;
         color: #ffffff;
         white-space: nowrap;
@@ -88,32 +98,37 @@
 .side-nav-items {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
-  margin-top: 8px;
+  min-height: 0;
+  margin-top: 6px;
 }
 
 .side-nav-toggle,
 .side-nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 4px 8px;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.6rem;
   font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
   color: #c7d2fe;
-  white-space: nowrap;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 9px;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 
   svg {
     flex-shrink: 0;
+    width: 15px;
+    height: 15px;
   }
 
   &:hover {
@@ -130,14 +145,14 @@
 .side-nav-toggle {
   color: #a5b4fc;
   border-bottom: 1px solid rgba(129, 140, 248, 0.15);
-  border-radius: 12px 12px 0 0;
+  border-radius: 9px 9px 0 0;
   padding-bottom: 2px;
 }
 
 .side-nav-title {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
@@ -159,6 +174,44 @@
 .side-nav-label {
   overflow: hidden;
   transition: opacity 0.2s ease;
+}
+
+/*
+  Tablet and phone: the bar keeps only its icon rail in the layout, and opening
+  it lays the labels over the screen instead of squeezing the screen narrower.
+*/
+@media (max-width: 1024px) {
+  :host {
+    width: 48px;
+  }
+
+  .side-nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+}
+
+@media (max-width: 600px) {
+  :host {
+    width: 40px;
+  }
+
+  .side-nav {
+    padding: 8px 4px;
+
+    &.collapsed {
+      width: 40px;
+    }
+  }
+}
+
+/* Short screens — a phone on its side — must still reach Logout. */
+@media (max-height: 420px) {
+  .side-nav {
+    overflow-y: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

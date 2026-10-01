@@ -218,8 +218,14 @@ export class EmailAutomationService {
     );
   }
 
-  /** The download URL for one file on a saved reply. Same shape as attachmentUrl(). */
-  replyAttachmentUrl(replyId: number, fileName: string): string {
+  /**
+   * The download URL for one file on a saved reply, or on a mail that came in.
+   * Same shape as attachmentUrl().
+   *
+   * A reply is asked for by its numeric id (18); a mail by its reference
+   * ('13-M') — main_email_messages.ID with '-M' after it.
+   */
+  replyAttachmentUrl(replyId: number | string, fileName: string): string {
     const query = `replyId=${encodeURIComponent(replyId)}&fileName=${encodeURIComponent(fileName)}`;
 
     return `${this.config.apiBaseUrl}/emailautomation/reply-attachment?${query}`;
@@ -233,7 +239,7 @@ export class EmailAutomationService {
    * would open in a tab instead of landing in Downloads. A blob is same-origin
    * by the time the anchor sees it, so the file name and the save both hold.
    */
-  downloadReplyAttachment(replyId: number, fileName: string): Observable<Blob> {
+  downloadReplyAttachment(replyId: number | string, fileName: string): Observable<Blob> {
     return this.http.get(this.replyAttachmentUrl(replyId, fileName), {
       responseType: 'blob',
     });

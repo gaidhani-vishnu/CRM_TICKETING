@@ -1195,9 +1195,9 @@ namespace EmailAutomation.Models
         public string Date { get; set; }
 
         /// <summary>
-        /// Mailbox written into [Assigned To] of every thread that gets a new
-        /// ticket and has no owner yet — config.json's fallbackUser.emailId,
-        /// e.g. "CRMHEAD@PRIDEWORLDCITY.COM". Optional: blank skips the write.
+        /// Mailbox written into [Assigned To] of every ticketed thread that has
+        /// no owner yet — config.json's fallbackUser.emailId. Only used when
+        /// Web.config's "CRMHead" key is unset; that key wins otherwise.
         /// </summary>
         [JsonProperty("defaultAssignee")]
         public string DefaultAssignee { get; set; }
@@ -1811,6 +1811,17 @@ namespace EmailAutomation.Models
 
         [JsonProperty("messageText")]
         public string MessageText { get; set; }
+
+        /// <summary>
+        /// The reference the mail's attachments are filed under: [ID] with "-M"
+        /// after it, e.g. '13-M'. Their Reply_ID in PRIDE_EMAIL_REPLY_ATTACHMENT,
+        /// and what reply-attachment is asked for them by.
+        /// </summary>
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("attachments")]
+        public List<ThreadReplyAttachmentRow> Attachments { get; set; }
     }
 
     /// <summary>Response for GET api/emailautomation/thread-messages?threadId=...</summary>

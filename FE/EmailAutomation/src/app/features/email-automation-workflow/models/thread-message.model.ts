@@ -1,4 +1,4 @@
-import { ThreadReply } from './thread-reply.model';
+import { ThreadReply, ThreadReplyAttachment } from './thread-reply.model';
 
 /**
  * Mail that came in on a thread, kept in main_email_messages and replayed in
@@ -16,6 +16,14 @@ export interface ThreadMessage {
   receivedTime: string;
   subject: string;
   messageText: string;
+  /**
+   * The reference the mail's attachments are filed under: main_email_messages.ID
+   * with '-M' after it, e.g. '13-M'. What the download endpoint is asked for
+   * them by. '' on the stand-in built from the row.
+   */
+  id: string;
+  /** The files the mail carried. Empty when it carried none. */
+  attachments: ThreadReplyAttachment[];
 }
 
 /** Response for GET {apiBaseUrl}/emailautomation/thread-messages?threadId=... */

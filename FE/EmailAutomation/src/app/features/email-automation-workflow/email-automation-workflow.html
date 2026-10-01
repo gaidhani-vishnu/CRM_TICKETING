@@ -18,8 +18,8 @@
 
         <div class="title-meta">
           <h1 class="page-title">Workflow Intelligence Dashboard</h1>
-          <span class="subtitle-divider">•</span>
-          <span class="subtitle">AI-Driven Workflow &amp; Email Thread Analysis</span>
+          <!-- <span class="subtitle-divider">•</span>
+          <span class="subtitle">AI-Driven Workflow &amp; Email Thread Analysis</span> -->
         </div>
       </div>
 
@@ -216,9 +216,9 @@
               </span>
 
               <!--
-                Category moved down to the Ticket card's own title row, next to
-                Primary Intent — the two are what the ticket was classified as,
-                and they read together. The SLA takes its place here, where it
+                Category is no longer shown anywhere in the panel; the Ticket
+                card's title row shows Primary Intent and Sub-Intent instead,
+                as the client asked. The SLA takes its place here, where it
                 stays visible however far the panel is scrolled.
               -->
               <!--
@@ -364,14 +364,14 @@
                   header carries those.
                 -->
                 <div class="header-preview">
-                  <span class="hp-item hp-category" *ngIf="selectedRow.category">
-                    <span class="hp-label">Category</span>
-                    <span class="hp-value">{{ selectedRow.category }}</span>
-                  </span>
-
                   <span class="hp-item hp-intent">
                     <span class="hp-label">Primary Intent</span>
                     <span class="hp-value">{{ selectedRow.intent || 'General Inquiry' }}</span>
+                  </span>
+
+                  <span class="hp-item hp-subintent" *ngIf="selectedRow.subIntent">
+                    <span class="hp-label">Sub-Intent</span>
+                    <span class="hp-value">{{ selectedRow.subIntent }}</span>
                   </span>
                 </div>
 
@@ -406,12 +406,14 @@
                   <span class="val">{{ selectedTicketStatus || '—' }}</span>
                 </div>
 
-                <!-- Category classifies the ticket, so it belongs with the
-                     ticket's own fields rather than on the sender line -->
+                <!-- Category box hidden from the UI at the client's request;
+                     selectedRow.category still drives the logic. Uncomment to restore.
                 <div class="insight-box" *ngIf="selectedRow?.category">
                   <span class="lbl">Category</span>
                   <span class="val">{{ selectedRow?.category }}</span>
                 </div>
+                -->
+
 
                 <!-- SLA held on the ticket, counting down live from the moment
                      it was raised — and counting up once it has run out. -->

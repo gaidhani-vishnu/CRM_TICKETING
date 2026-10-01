@@ -78,6 +78,12 @@
 
             <div class="alert-history-body">{{ message.messageText }}</div>
 
+            <!-- What the mail carried, under what it said. -->
+            <ng-container
+              [ngTemplateOutlet]="historyFiles"
+              [ngTemplateOutletContext]="{ owner: message, files: message.attachments }"
+            ></ng-container>
+
             <footer class="alert-history-card-foot">
               <span class="alert-history-direction">
                 <span class="alert-history-direction-dot" aria-hidden="true"></span>
@@ -124,66 +130,10 @@
 
             <div class="alert-history-body">{{ reply.body }}</div>
 
-            <!-- Two to a row, laid out like the Assigned To card the reviewer
-                 already knows: a tile saying what kind of thing it is, the name
-                 and size stacked beside it, and one button that saves it.
-
-                 The body and the save are separate targets. Clicking an image
-                 opens it in the pane below -- where the reply it belongs to
-                 stays on screen behind it -- and clicking anything else opens
-                 it in a tab, since the browser renders those better than this
-                 popup can. The arrow always means the same thing: put the file
-                 on my machine. -->
-            <div class="alert-history-files" *ngIf="reply.attachments?.length">
-              <div class="alert-history-file" *ngFor="let file of reply.attachments">
-                <button
-                  *ngIf="file.isImage; else fileLink"
-                  type="button"
-                  class="alert-history-file-main"
-                  (click)="openPreview(reply, file)"
-                  [title]="file.fileName + ' — click to preview'"
-                >
-                  <ng-container
-                    [ngTemplateOutlet]="fileChip"
-                    [ngTemplateOutletContext]="{ file: file, image: true }"
-                  ></ng-container>
-                </button>
-
-                <ng-template #fileLink>
-                  <a
-                    class="alert-history-file-main"
-                    [href]="attachmentUrl(reply, file)"
-                    target="_blank"
-                    rel="noopener"
-                    [title]="file.fileName + ' — click to open in a new tab'"
-                  >
-                    <ng-container
-                      [ngTemplateOutlet]="fileChip"
-                      [ngTemplateOutletContext]="{ file: file, image: false }"
-                    ></ng-container>
-                  </a>
-                </ng-template>
-
-                <button
-                  type="button"
-                  class="alert-history-file-save"
-                  (click)="download(reply, file)"
-                  [disabled]="isDownloading(reply, file)"
-                  [attr.aria-label]="'Download ' + file.fileName"
-                  [title]="isDownloading(reply, file) ? 'Downloading…' : 'Download ' + file.fileName"
-                >
-                  <!-- The spinner replaces the arrow in place, so a slow save on
-                       a 4 MB image does not read as a click that did nothing. -->
-                  <span class="alert-history-file-spinner" *ngIf="isDownloading(reply, file)" aria-hidden="true"></span>
-
-                  <svg *ngIf="!isDownloading(reply, file)" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <ng-container
+              [ngTemplateOutlet]="historyFiles"
+              [ngTemplateOutletContext]="{ owner: reply, files: reply.attachments }"
+            ></ng-container>
 
             <!-- A save that did not happen. Under the files it belongs to, not
                  at the top of the popup, so it is read where it was caused. -->
@@ -556,4 +506,73 @@
     <span class="alert-history-file-name">{{ file.fileName }}</span>
     <span class="alert-history-file-size">{{ readableSize(file.sizeBytes) }}</span>
   </span>
+</ng-template>
+
+<!--
+  The files on one entry of the conversation, whichever side sent it: a reply
+  the CRM saved, or a mail that came in. `owner` is that entry -- its id is what
+  the download is asked for by.
+
+  Two to a row, laid out like the Assigned To card the reviewer
+  already knows: a tile saying what kind of thing it is, the name
+  and size stacked beside it, and one button that saves it.
+
+  The body and the save are separate targets. Clicking an image
+  opens it in the pane below -- where the reply it belongs to
+  stays on screen behind it -- and clicking anything else opens
+  it in a tab, since the browser renders those better than this
+  popup can. The arrow always means the same thing: put the file
+  on my machine.
+-->
+<ng-template #historyFiles let-owner="owner" let-files="files">
+  <div class="alert-history-files" *ngIf="files?.length">
+    <div class="alert-history-file" *ngFor="let file of files">
+      <button
+        *ngIf="file.isImage; else fileLink"
+        type="button"
+        class="alert-history-file-main"
+        (click)="openPreview(owner, file)"
+        [title]="file.fileName + ' — click to preview'"
+      >
+        <ng-container
+          [ngTemplateOutlet]="fileChip"
+          [ngTemplateOutletContext]="{ file: file, image: true }"
+        ></ng-container>
+      </button>
+
+      <ng-template #fileLink>
+        <a
+          class="alert-history-file-main"
+          [href]="attachmentUrl(owner, file)"
+          target="_blank"
+          rel="noopener"
+          [title]="file.fileName + ' — click to open in a new tab'"
+        >
+          <ng-container
+            [ngTemplateOutlet]="fileChip"
+            [ngTemplateOutletContext]="{ file: file, image: false }"
+          ></ng-container>
+        </a>
+      </ng-template>
+
+      <button
+        type="button"
+        class="alert-history-file-save"
+        (click)="download(owner, file)"
+        [disabled]="isDownloading(owner, file)"
+        [attr.aria-label]="'Download ' + file.fileName"
+        [title]="isDownloading(owner, file) ? 'Downloading…' : 'Download ' + file.fileName"
+      >
+        <!-- The spinner replaces the arrow in place, so a slow save on
+             a 4 MB image does not read as a click that did nothing. -->
+        <span class="alert-history-file-spinner" *ngIf="isDownloading(owner, file)" aria-hidden="true"></span>
+
+        <svg *ngIf="!isDownloading(owner, file)" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
 </ng-template>

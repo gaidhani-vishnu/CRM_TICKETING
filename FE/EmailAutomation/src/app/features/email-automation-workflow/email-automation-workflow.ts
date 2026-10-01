@@ -222,9 +222,22 @@ export class EmailAutomationWorkflow implements OnInit, OnDestroy {
     // Thread ID by the ingestion pipeline, and a loan row is one customer of a
     // shared email: its own customer thread id names no folder, and the files
     // being asked for are the email's.
-    this.attachmentsThreadId =
-      this.selectedRow?.parentThreadId || this.selectedRow?.threadId || null;
+    //
+    // A POR thread classified "Payment - Customer" is the exception: its files
+    // are saved under its own id ({AttachmentsFolderPath}\POR-809b50e7\), so the
+    // popup opens that folder and lists nothing but the POR's own files.
+    this.attachmentsThreadId = this.isPorPaymentCustomerRow
+      ? this.selectedRow!.threadId
+      : this.selectedRow?.parentThreadId || this.selectedRow?.threadId || null;
     this.lastOpenedPopup = 'attachments';
+  }
+
+  /** True when the selected thread's id starts "POR-" and its [Category] is "Payment - Customer". */
+  private get isPorPaymentCustomerRow(): boolean {
+    const threadId = (this.selectedRow?.threadId || '').trim().toUpperCase();
+    const category = (this.selectedRow?.category || '').trim().toLowerCase();
+
+    return threadId.startsWith('POR-') && category === 'payment - customer';
   }
 
   closeAttachments(): void {
