@@ -7,10 +7,10 @@
   "fallbackUser": { "name": "NAMRATA", "emailId": "CRMHEAD@PRIDEWORLDCITY.COM" },
   "FromEmail": { "name": "WORKFLOW", "emailId": "workflow@prideworldcity.com" },
 
-  "updatedBy": "CRM UI",
+  "updatedBy": "CRM TICKETING", 
 
   "users": [
-    { "name": "NIKITA K.", "emailId": "CRM@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
+   { "name": "NIKITA K.", "emailId": "CRM@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
     { "name": "SONAL", "emailId": "CRM3@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
     { "name": "AMIT", "emailId": "CRM11@PRIDEWORLDCITY.COM", "Slot": "Pre-Agreement" },
     { "name": "PRINC JAIN", "emailId": "CRM5@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
@@ -21,7 +21,9 @@
     { "name": "BHAGYASHREE", "emailId": "CRM1@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
     { "name": "ADITI", "emailId": "CRM9@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
     { "name": "RITA", "emailId": "RITA@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
-    { "name": "SURAJ", "emailId": "CRM7@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" }
+    { "name": "SURAJ", "emailId": "CRM7@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "MAYUR", "emailId": "MHADA@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" },
+    { "name": "PIYUSH", "emailId": "CRM6@PRIDEWORLDCITY.COM", "Slot": "Post-Agreement" }
   ],
 
   "bookingStatusSlots": {
@@ -58,81 +60,190 @@
 
   "projectMappings": [
     {
-      "company": "CHARHOLI INFRASTRUCTURE LLP",
-      "projectName": "MONTREAL-A-B-C-D",
-      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
-    },
-    {
-      "company": "CHARHOLI INFRASTRUCTURE LLP",
-      "projectName": "MONTREAL-E-H",
-      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
-    },
-    {
-      "company": "CHARHOLI INFRASTRUCTURE LLP",
-      "projectName": "RIO TOWER",
-      "users": ["PIYUSH"]
-    },
-    {
-      "company": "CHARHOLI INFRASTRUCTURE LLP",
-      "projectName": "MONTREAL F-G",
-      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
-    },
-
-    {
-      "company": "PRIDE BUILDERS LLP BRANCH",
-      "projectName": "SOHO",
-      "users": ["RITA", "SURAJ"]
-    },
-    {
       "company": "PRIDE BUILDERS LLP BRANCH",
       "projectName": "WELLINGTON - C-D",
-      "users": ["RITA", "SURAJ"]
-    },
-    {
-      "company": "PRIDE BUILDERS LLP BRANCH",
-      "projectName": "WELLINGTON - L-M",
-      "users": ["KAILASH D", "SANJANA", "SHRUTI M"]
+      "subProject": "D",
+      "users": ["SURAJ"]
     },
     {
       "company": "PRIDE BUILDERS LLP BRANCH",
       "projectName": "WELLINGTON - E-H-J-K",
-      "users": ["RITA", "SURAJ"]
+      "subProject": "K",
+      "users": ["RITA"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - E-H-J-K",
+      "subProject": "E",
+      "users": ["RITA"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - E-H-J-K",
+      "subProject": "H",
+      "users": ["SURAJ"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - E-H-J-K",
+      "subProject": "J",
+      "users": ["SURAJ"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-A-B-C-D",
+      "subProject": "A",
+      "users": ["KAILASH D"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-A-B-C-D",
+      "subProject": "B",
+      "users": ["KAILASH D"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-A-B-C-D",
+      "subProject": "C",
+      "users": ["KAILASH D"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-A-B-C-D",
+      "subProject": "D",
+      "users": ["KAILASH D"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-E-H",
+      "subProject": "E",
+      "users": ["SANJANA"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL-E-H",
+      "subProject": "H",
+      "users": ["SANJANA"]
     },
     {
       "company": "PRIDE BUILDERS LLP BRANCH",
       "projectName": "WELLINGTON - F-G",
-      "users": ["RITA", "SURAJ"]
+      "subProject": "F",
+      "users": ["SANJANA"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - F-G",
+      "subProject": "G",
+      "users": ["SANJANA"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL F-G",
+      "subProject": "F",
+      "users": ["SHRUTI M"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "MONTREAL F-G",
+      "subProject": "G",
+      "users": ["SHRUTI M"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "WELLINGTON - L-M",
+      "subProject": "L",
+      "users": ["SHRUTI M"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "A",
+      "users": ["TWINKLE"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "B",
+      "users": ["TWINKLE"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "C",
+      "users": ["TWINKLE"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "D",
+      "users": ["PRINC JAIN"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "E",
+      "users": ["PRINC JAIN"]
+    },
+    {
+      "company": "RP PROPERTIES",
+      "projectName": "BOSTON",
+      "subProject": "F",
+      "users": ["PRINC JAIN"]
     },
     {
       "company": "PRIDE BUILDERS LLP BRANCH",
       "projectName": "MIAMI - A1-A2-A3-B2",
-      "users": ["BHAGYASHREE", "ADITI"]
+      "subProject": "A1",
+      "users": ["BHAGYASHREE"]
     },
     {
       "company": "PRIDE BUILDERS LLP BRANCH",
-      "projectName": "MIAMI - A6-A7-B1",
-      "users": ["BHAGYASHREE", "ADITI"]
+      "projectName": "MIAMI - A1-A2-A3-B2",
+      "subProject": "A2",
+      "users": ["BHAGYASHREE"]
     },
     {
       "company": "PRIDE BUILDERS LLP BRANCH",
       "projectName": "MIAMI - A4-A5",
-      "users": ["BHAGYASHREE", "ADITI"]
-    },
-
-    {
-      "company": "RP PROPERTIES",
-      "projectName": "BOSTON - A B C",
-      "users": ["PRINC JAIN", "TWINKLE"]
+      "subProject": "A4",
+      "users": ["BHAGYASHREE"]
     },
     {
-      "company": "RP PROPERTIES",
-      "projectName": "BOSTON - D E F",
-      "users": ["PRINC JAIN", "TWINKLE"]
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A4-A5",
+      "subProject": "A5",
+      "users": ["BHAGYASHREE"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A6-A7-B1",
+      "subProject": "A6",
+      "users": ["BHAGYASHREE"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A6-A7-B1",
+      "subProject": "A7",
+      "users": ["BHAGYASHREE"]
+    },
+    {
+      "company": "PRIDE BUILDERS LLP BRANCH",
+      "projectName": "MIAMI - A6-A7-B1",
+      "subProject": "B1",
+      "users": ["BHAGYASHREE"]
+    },
+    {
+      "company": "CHARHOLI INFRASTRUCTURE LLP",
+      "projectName": "RIO TOWER",
+      "subProject": "J",
+      "users": ["PIYUSH"]
     },
     {
       "company": "RP PROPERTIES",
       "projectName": "SHRIDHAM - L BUILDING",
-      "users": ["PIYUSH"]
+      "subProject": "L",
+      "users": ["MAYUR"]
     }
   ]
 }

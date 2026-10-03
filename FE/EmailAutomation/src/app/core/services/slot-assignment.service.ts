@@ -23,10 +23,12 @@ export interface SlotAssignmentInput {
 export type SlotAssignmentReason =
   /** Unit Match said Unmatch; nothing about the booking was read. */
   | 'unit-unmatched'
-  /** The first of the project's owners who works the booking's stage. */
+  /** The sub-project's mapped owner, who works the booking's stage. */
   | 'slot-mapping'
   /** The slot is known but nobody holds it here, so the CRM head does. */
   | 'no-slot-user'
+  /** config.json names more than one owner for this sub-project — a reviewer picks. */
+  | 'multiple-owners'
   /** The booking status is blank or unlisted — a reviewer has to say who owns it. */
   | 'unknown-status';
 
@@ -36,7 +38,7 @@ export interface SlotAssignmentDecision {
   /** null when the booking status did not resolve to one. */
   slot: CrmSlot | null;
   reason: SlotAssignmentReason;
-  /** True only for 'unknown-status' — the card asks the reviewer to pick. */
+  /** True for 'unknown-status' and 'multiple-owners' — the card asks the reviewer to pick. */
   needsIntervention: boolean;
   /** The names that were in the running, for the card's meta line. */
   pool: string[];
@@ -48,10 +50,8 @@ export interface SlotAssignmentDecision {
  * The booking's own stage is what picks the owner. Every booking status is
  * staged in config.json under one of three slots — Pre-Agreement,
  * Post-Agreement, Post-Possession — and all three are worked the same way: the
- * project + sub-project mapping says who this project's executives are, the
- * slot narrows them to whoever works that stage, and the first of those owns
- * the thread. First, as it was before slots existed; the slot only shortens the
- * list the mapping already puts in order.
+ * project + sub-project mapping names the one executive for that wing, and they
+ * own the thread if they work that stage.
  *
  * Anything that does not resolve — the unit did not match, the status is not
  * staged, or nobody on this project works the stage — goes to the CRM head, so
@@ -86,13 +86,12 @@ export class SlotAssignmentService {
   }
 
   /**
-   * The project's own people, minus anyone who does not work this stage.
+   * The one user config.json maps to this project + sub-project, provided they
+   * work this stage.
    *
-   * The mapping's order is kept, so "the first of them" means what it meant
-   * before slots existed — the executive the project lists first. Every slot
-   * takes any number of users; which of them wins is a config.json question,
-   * not a code one, and re-ordering a mapping is how the CRM team moves a
-   * project's threads to somebody else.
+   * No "first of the list" pick: each sub-project names exactly one owner. If
+   * config.json ends up naming more than one for the same wing, nobody is
+   * guessed — the CRM head holds it and a reviewer picks.
    */
   private byMapping(slot: CrmSlot, input: SlotAssignmentInput): SlotAssignmentDecision {
     const mapped = this.projectAssignment.getAssignment(input.project, input.subProject);
@@ -103,16 +102,21 @@ export class SlotAssignmentService {
       return this.head('no-slot-user', slot);
     }
 
-    const inSlot = this.config.usersInSlot(slot).map((user) => this.nameKey(user.name));
-    const eligible = mapped.users.filter((user) => inSlot.indexOf(this.nameKey(user.name)) !== -1);
     const pool = mapped.users.map((user) => user.name);
 
-    if (eligible.length === 0) {
+    if (mapped.users.length > 1) {
+      return { ...this.head('multiple-owners', slot, pool), needsIntervention: true };
+    }
+
+    const owner = mapped.users[0];
+    const inSlot = this.config.usersInSlot(slot).map((user) => this.nameKey(user.name));
+
+    if (!owner || inSlot.indexOf(this.nameKey(owner.name)) === -1) {
       return this.head('no-slot-user', slot, pool);
     }
 
     return {
-      user: eligible[0],
+      user: owner,
       slot,
       reason: 'slot-mapping',
       needsIntervention: false,
