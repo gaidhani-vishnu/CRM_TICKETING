@@ -78,6 +78,7 @@ describe('UserDashboardService', () => {
             projectMappings: [],
             fallbackUser: { name: 'CRM_Head', emailId: 'head@example.com' },
             getEmailForUser: () => '',
+            mailboxOf: (value: string) => (value || '').trim(),
           },
         },
       ],
@@ -415,7 +416,8 @@ describe('UserDashboardService', () => {
       '2026-09-01'
     );
 
-    expect(joined[0].assignedTo).toBe('CRM_Head');
+    // Filed by mailbox — [Assigned To] stores the emailId, not the name.
+    expect(joined[0].assignedTo).toBe('head@example.com');
   });
 
   it('counts a re-opened thread once, on the closed side', () => {

@@ -31,8 +31,8 @@ namespace EmailAutomation.Controllers
     /// table instead of a file per day. The bank statement workbooks are still
     /// files — only the report data moved.
     /// </summary>
-    //[RoutePrefix("emailautomation")]
     [RoutePrefix("api/emailautomation")]
+    //[RoutePrefix("emailautomation")]
     public class EmailAutomationController : ApiController
     {
         // ── SQL: the report tables ───────────────────────────────────
@@ -489,9 +489,9 @@ namespace EmailAutomation.Controllers
         }
 
         /// <summary>
-        /// Runs a read, and runs it once more if SQL Server picks it as a
-        /// deadlock victim (1205) or aborts a no-lock scan because rows moved
-        /// under it (601).
+        /// Runs a read, and runs it again -- up to DeadlockAttempts times in all,
+        /// backing off between tries -- if SQL Server picks it as a deadlock
+        /// victim (1205) or aborts a no-lock scan because rows moved under it (601).
         ///
         /// The reader's half of ExecuteWithDeadlockRetry, and it has to take the
         /// whole open-run-materialise cycle rather than a command: once a read
@@ -500,18 +500,16 @@ namespace EmailAutomation.Controllers
         /// </summary>
         private static T ReadWithDeadlockRetry<T>(Func<T> read)
         {
-            const int deadlockVictim = 1205;
-            const int noLockScanAborted = 601;
-
-            try
+            for (var attempt = 1; ; attempt++)
             {
-                return read();
-            }
-            catch (SqlException ex) when (ex.Number == deadlockVictim || ex.Number == noLockScanAborted)
-            {
-                Thread.Sleep(120);
-
-                return read();
+                try
+                {
+                    return read();
+                }
+                catch (SqlException ex) when (IsRetryableLockError(ex) && attempt < DeadlockAttempts)
+                {
+                    WaitBeforeRetry(attempt);
+                }
             }
         }
 
@@ -2417,28 +2415,64 @@ ORDER BY ProjectBankAccountId";
         }
 
         /// <summary>
-        /// Runs a statement, and runs it once more if SQL Server picks it as a
-        /// deadlock victim (error 1205).
+        /// Runs a statement, and runs it again -- up to DeadlockAttempts times in
+        /// all -- if SQL Server picks it as a deadlock victim (error 1205).
         ///
         /// A deadlock victim is not a failed write — it is a write that was asked
         /// to stand aside and try again, which is what this does. The reviewer
         /// should not be shown a server exception for a save that would have
         /// succeeded a moment later.
+        ///
+        /// Only a statement on its own is retried. Inside a transaction a
+        /// deadlock has already rolled the whole transaction back, so re-running
+        /// one statement of it would be wrong; that is left to the caller.
         /// </summary>
         private static int ExecuteWithDeadlockRetry(SqlCommand command)
         {
-            const int deadlockVictim = 1205;
-
-            try
+            for (var attempt = 1; ; attempt++)
             {
-                return command.ExecuteNonQuery();
+                try
+                {
+                    return command.ExecuteNonQuery();
+                }
+                catch (SqlException ex) when (IsRetryableLockError(ex) &&
+                                              command.Transaction == null &&
+                                              attempt < DeadlockAttempts)
+                {
+                    WaitBeforeRetry(attempt);
+                }
             }
-            catch (SqlException ex) when (ex.Number == deadlockVictim)
-            {
-                Thread.Sleep(120);
+        }
 
-                return command.ExecuteNonQuery();
+        /// <summary>How many times a deadlocked statement or read is run in all.</summary>
+        private const int DeadlockAttempts = 5;
+
+        private static readonly Random RetryJitter = new Random();
+
+        /// <summary>
+        /// 1205: chosen as the deadlock victim. 601: a no-lock scan aborted
+        /// because rows moved under it. Both mean "run it again", nothing else.
+        /// </summary>
+        private static bool IsRetryableLockError(SqlException ex)
+        {
+            return ex.Number == 1205 || ex.Number == 601;
+        }
+
+        /// <summary>
+        /// Backs off longer each time -- 100, 200, 400, 800 ms -- plus a random
+        /// part, so two requests that deadlocked each other do not retry in step
+        /// and deadlock again.
+        /// </summary>
+        private static void WaitBeforeRetry(int attempt)
+        {
+            int jitter;
+
+            lock (RetryJitter)
+            {
+                jitter = RetryJitter.Next(0, 100);
             }
+
+            Thread.Sleep((100 << (attempt - 1)) + jitter);
         }
 
         /// <summary>
@@ -2759,7 +2793,9 @@ ORDER BY ProjectBankAccountId";
             {
                 connection.Open();
 
-                using (var transaction = connection.BeginTransaction())
+                // Named, not left to default: an unnamed level takes whatever the
+                // pooled session last had, which used to be SERIALIZABLE.
+                using (var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted))
                 {
                     response.MarkedOverdue = MarkOverdueTickets(connection, transaction, ticketId);
 
@@ -3057,127 +3093,166 @@ WHERE  Ticket_ID = @ticketId AND Ticket_Status = @open";
             {
                 connection.Open();
 
-                using (var transaction = connection.BeginTransaction(IsolationLevel.Serializable))
+                // try/finally: SERIALIZABLE outlives the transaction on the
+                // session, and a pooled connection carries it into every later
+                // request -- see ResetIsolationLevel.
+                try
                 {
-                    // Every open ticket that has run out gets its breach recorded
-                    // here, before anything is read back: loading a date is the
-                    // moment those answers are about to be looked at, and there is
-                    // no scheduler to do it in the background.
-                    MarkOverdueTickets(connection, transaction, null);
-
-                    var serverNow = ReadServerNow(connection, transaction);
-                    serverTime = serverNow.ToString(SlaTimestampFormat, CultureInfo.InvariantCulture);
-
-                    var openTickets = ReadOpenTickets(connection, transaction);
-
-                    // What these threads have already had closed. Read before any
-                    // new ticket is raised, so a ticket created by this very call
-                    // cannot turn up in the closed list.
-                    closedTickets = ReadClosedTickets(
-                        connection, transaction,
-                        threads.Select(t => t.ThreadId.Trim()));
-
-                    // Next free number per year, read once and then handed out locally.
-                    var nextSequence = new Dictionary<int, int>();
-
-                    foreach (var thread in threads)
+                    using (var transaction = connection.BeginTransaction(IsolationLevel.Serializable))
                     {
-                        var threadId = thread.ThreadId.Trim();
+                        // Every open ticket that has run out gets its breach recorded
+                        // here, before anything is read back: loading a date is the
+                        // moment those answers are about to be looked at, and there is
+                        // no scheduler to do it in the background.
+                        MarkOverdueTickets(connection, transaction, null);
 
-                        OpenTicket existing;
+                        var serverNow = ReadServerNow(connection, transaction);
+                        serverTime = serverNow.ToString(SlaTimestampFormat, CultureInfo.InvariantCulture);
 
-                        if (openTickets.TryGetValue(threadId, out existing))
+                        var openTickets = ReadOpenTickets(connection, transaction);
+
+                        // What these threads have already had closed. Read before any
+                        // new ticket is raised, so a ticket created by this very call
+                        // cannot turn up in the closed list.
+                        closedTickets = ReadClosedTickets(
+                            connection, transaction,
+                            threads.Select(t => t.ThreadId.Trim()));
+
+                        // Next free number per year, read once and then handed out locally.
+                        var nextSequence = new Dictionary<int, int>();
+
+                        foreach (var thread in threads)
                         {
-                            // Tickets raised before EmailLink existed have none; fill it
-                            // in now rather than leaving them blank forever.
-                            if (string.IsNullOrWhiteSpace(existing.EmailLink) &&
-                                !string.IsNullOrWhiteSpace(thread.EmailLink))
-                            {
-                                FillMissingEmailLink(connection, transaction, existing.TicketId, thread.EmailLink);
-                                existing.EmailLink = thread.EmailLink;
-                            }
+                            var threadId = thread.ThreadId.Trim();
 
-                            // Same idea for the creation stamp: a ticket from
-                            // before the column existed has no clock until one is
-                            // written, and a reused ticket takes no other write.
-                            if (!existing.CreatedDate.HasValue)
-                            {
-                                var stamped = FillMissingCreatedDate(connection, transaction, existing.TicketId);
+                            OpenTicket existing;
 
-                                if (stamped.HasValue)
+                            if (openTickets.TryGetValue(threadId, out existing))
+                            {
+                                // Tickets raised before EmailLink existed have none; fill it
+                                // in now rather than leaving them blank forever.
+                                if (string.IsNullOrWhiteSpace(existing.EmailLink) &&
+                                    !string.IsNullOrWhiteSpace(thread.EmailLink))
                                 {
-                                    existing.CreatedDate = stamped;
-                                    existing.SlaStatus = SlaStatusOnTrack;
+                                    FillMissingEmailLink(connection, transaction, existing.TicketId, thread.EmailLink);
+                                    existing.EmailLink = thread.EmailLink;
                                 }
+
+                                // Same idea for the creation stamp: a ticket from
+                                // before the column existed has no clock until one is
+                                // written, and a reused ticket takes no other write.
+                                if (!existing.CreatedDate.HasValue)
+                                {
+                                    var stamped = FillMissingCreatedDate(connection, transaction, existing.TicketId);
+
+                                    if (stamped.HasValue)
+                                    {
+                                        existing.CreatedDate = stamped;
+                                        existing.SlaStatus = SlaStatusOnTrack;
+                                    }
+                                }
+
+                                var reused = new TicketAcknowledgementItem
+                                {
+                                    ThreadId = threadId,
+                                    TicketId = existing.TicketId,
+                                    EmailDate = thread.EmailDate,
+                                    Sla = existing.Sla,
+                                    SlaStatus = existing.SlaStatus,
+                                    TicketStatus = existing.TicketStatus,
+                                    EmailLink = existing.EmailLink,
+                                    IsNew = false
+                                };
+
+                                // Its Created_Date is untouched, so the countdown
+                                // picks up where it left off rather than restarting.
+                                ApplySlaState(reused, existing.CreatedDate, serverNow);
+                                results.Add(reused);
+
+                                continue;
                             }
 
-                            var reused = new TicketAcknowledgementItem
+                            var year = TicketYearOf(thread.EmailDate, fallbackYear);
+
+                            if (!nextSequence.ContainsKey(year))
                             {
-                                ThreadId = threadId,
-                                TicketId = existing.TicketId,
-                                EmailDate = thread.EmailDate,
-                                Sla = existing.Sla,
-                                SlaStatus = existing.SlaStatus,
-                                TicketStatus = existing.TicketStatus,
-                                EmailLink = existing.EmailLink,
-                                IsNew = false
+                                nextSequence[year] = ReadHighestTicketSequence(connection, transaction, year) + 1;
+                            }
+
+                            var ticketId = FormatTicketId(year, nextSequence[year]);
+                            nextSequence[year]++;
+
+                            // The SLA clock starts here: the database stamps
+                            // Created_Date as the ticket number and SLA go in.
+                            var createdDate = InsertTicket(
+                                connection, transaction, threadId, ticketId, thread.EmailDate, thread.EmailLink);
+
+                            // Guards against the same thread appearing twice in one batch.
+                            openTickets[threadId] = new OpenTicket
+                            {
+                                TicketId = ticketId,
+                                Sla = TicketDefaultSla,
+                                TicketStatus = TicketStatusOpen,
+                                EmailLink = thread.EmailLink,
+                                CreatedDate = createdDate,
+                                SlaStatus = SlaStatusOnTrack
                             };
 
-                            // Its Created_Date is untouched, so the countdown
-                            // picks up where it left off rather than restarting.
-                            ApplySlaState(reused, existing.CreatedDate, serverNow);
-                            results.Add(reused);
+                            var raised = new TicketAcknowledgementItem
+                            {
+                                ThreadId = threadId,
+                                TicketId = ticketId,
+                                EmailDate = thread.EmailDate,
+                                Sla = TicketDefaultSla,
+                                SlaStatus = SlaStatusOnTrack,
+                                TicketStatus = TicketStatusOpen,
+                                EmailLink = thread.EmailLink,
+                                IsNew = true
+                            };
 
-                            continue;
+                            ApplySlaState(raised, createdDate, serverNow);
+                            results.Add(raised);
                         }
 
-                        var year = TicketYearOf(thread.EmailDate, fallbackYear);
-
-                        if (!nextSequence.ContainsKey(year))
-                        {
-                            nextSequence[year] = ReadHighestTicketSequence(connection, transaction, year) + 1;
-                        }
-
-                        var ticketId = FormatTicketId(year, nextSequence[year]);
-                        nextSequence[year]++;
-
-                        // The SLA clock starts here: the database stamps
-                        // Created_Date as the ticket number and SLA go in.
-                        var createdDate = InsertTicket(
-                            connection, transaction, threadId, ticketId, thread.EmailDate, thread.EmailLink);
-
-                        // Guards against the same thread appearing twice in one batch.
-                        openTickets[threadId] = new OpenTicket
-                        {
-                            TicketId = ticketId,
-                            Sla = TicketDefaultSla,
-                            TicketStatus = TicketStatusOpen,
-                            EmailLink = thread.EmailLink,
-                            CreatedDate = createdDate,
-                            SlaStatus = SlaStatusOnTrack
-                        };
-
-                        var raised = new TicketAcknowledgementItem
-                        {
-                            ThreadId = threadId,
-                            TicketId = ticketId,
-                            EmailDate = thread.EmailDate,
-                            Sla = TicketDefaultSla,
-                            SlaStatus = SlaStatusOnTrack,
-                            TicketStatus = TicketStatusOpen,
-                            EmailLink = thread.EmailLink,
-                            IsNew = true
-                        };
-
-                        ApplySlaState(raised, createdDate, serverNow);
-                        results.Add(raised);
+                        transaction.Commit();
                     }
-
-                    transaction.Commit();
+                }
+                finally
+                {
+                    ResetIsolationLevel(connection);
                 }
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Puts a connection back to READ COMMITTED before it returns to the pool.
+        ///
+        /// SQL Server keeps a session's isolation level after its transaction
+        /// ends, and connection pooling hands that same session to the next
+        /// request. Left at SERIALIZABLE, every later grid read and step UPDATE on
+        /// it ran SERIALIZABLE too -- on a heap, that is a lock on the whole of
+        /// main_email_receipts, and two of those is the 1205 deadlock that kept
+        /// coming back. Best effort: a broken connection is not reused anyway.
+        /// </summary>
+        private static void ResetIsolationLevel(SqlConnection connection)
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                return;
+            }
+
+            try
+            {
+                using (var command = new SqlCommand("SET TRANSACTION ISOLATION LEVEL READ COMMITTED;", connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+            }
+            catch (SqlException)
+            {
+            }
         }
 
         /// <summary>
@@ -6256,9 +6331,10 @@ WHERE    [Thread ID] = @threadId";
                 // reason: a loan customer thread has no receipts row of its own,
                 // so the link is the parent email's.
                 DeriveThreadUrl(parentThread),
-                // The compose's From box. Blank from the Alert Response popup,
-                // which has no such box -- the column is then left alone.
-                request.From);
+                // Always config.json's FromEmail, whatever the compose sent --
+                // the Respond reply has no From box and sent it blank. The
+                // compose's own From is only used when FromEmail is not set.
+                ConfiguredFromEmail() ?? request.From);
 
             if (replyId <= 0)
             {
@@ -6557,6 +6633,25 @@ ORDER BY ID DESC";
         /// only when there is one: see the statement below on why a blank one is
         /// left out of the INSERT rather than written as NULL.
         /// </summary>
+        /// <summary>
+        /// config.json's FromEmail.emailId, the mailbox every saved reply is
+        /// stamped as sent from. Null when it is not set or config.json cannot be
+        /// read: a reply is still saved then, with the compose's own From.
+        /// </summary>
+        private static string ConfiguredFromEmail()
+        {
+            try
+            {
+                var email = (LoadUiOwnerConfig().FromEmail?.EmailId ?? string.Empty).Trim();
+
+                return email.Length == 0 ? null : email;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         private static int InsertThreadReply(
             string threadId, string ticketId, string to, string cc, string bcc,
             string subject, string body, string createdBy, string threadUrl, string sentFrom)
@@ -7685,6 +7780,9 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             public List<UiConfigProjectMapping> ProjectMappings { get; set; }
             public Dictionary<string, List<string>> BookingStatusSlots { get; set; }
             public UiConfigUser FallbackUser { get; set; }
+
+            /// <summary>config.json's FromEmail: the mailbox every reply's Sent_From stores.</summary>
+            public UiConfigUser FromEmail { get; set; }
         }
 
         private sealed class UiConfigUser
@@ -7736,7 +7834,17 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                     return null;
                 }
 
-                if (!UpdateReceiptColumn(emailDates, binding, "Assigned To", name))
+                // [Assigned To] stores the owner's emailId, never the name —
+                // the same mailbox the UI's assignOwner() writes.
+                var mailbox = AutoCheckMailboxOf(config, name);
+
+                if (mailbox.Length == 0)
+                {
+                    error = $"{name} has no emailId in config.json.";
+                    return null;
+                }
+
+                if (!UpdateReceiptColumn(emailDates, binding, "Assigned To", mailbox))
                 {
                     error = $"Thread {row.ThreadId} has no {ReceiptsTable} row to write [Assigned To] on.";
                     return null;
@@ -7825,6 +7933,29 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
             }
 
             return new AutoCheckOwnerDecision { UserName = eligible[0], Slot = slot, Reason = "slot-mapping", Pool = mapped };
+        }
+
+        /// <summary>
+        /// ConfigService.getEmailForUser: the emailId config.json pairs with an
+        /// owner's name — users[] first, then fallbackUser. '' when neither lists it.
+        /// </summary>
+        private static string AutoCheckMailboxOf(UiOwnerConfig config, string name)
+        {
+            var key = AutoCheckNameKey(name);
+
+            if (key.Contains("@"))
+            {
+                return name.Trim();
+            }
+
+            var user = config.Users.FirstOrDefault(u => AutoCheckNameKey(u.Name) == key);
+
+            if (user == null && AutoCheckNameKey(config.FallbackUser.Name) == key)
+            {
+                user = config.FallbackUser;
+            }
+
+            return (user?.EmailId ?? string.Empty).Trim();
         }
 
         /// <summary>SlotAssignmentService.head.</summary>

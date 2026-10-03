@@ -105,7 +105,7 @@
           <td>
             <span [ngClass]="ticket.isOverdue ? 'sla-bad' : 'sla-good'">{{ ticket.slaStatus }}</span>
           </td>
-          <td>{{ ticket.assignedTo }}</td>
+          <td [title]="ticket.assignedTo">{{ assigneeName(ticket) }}</td>
           <td>
             <button
               class="row-action"

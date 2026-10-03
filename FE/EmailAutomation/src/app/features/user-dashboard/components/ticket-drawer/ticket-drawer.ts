@@ -8,6 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 
+import { UserDirectoryService } from '../../../../core/services/user-directory.service';
 import { DashboardTicket } from '../../models/user-dashboard.model';
 
 /** One key/value tile in the drawer's overview grid. */
@@ -48,6 +49,8 @@ export class TicketDrawer implements OnChanges {
 
   fields: DrawerField[] = [];
   steps: DrawerStep[] = [];
+
+  constructor(private readonly userDirectory: UserDirectoryService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['ticket']) {
@@ -94,7 +97,8 @@ export class TicketDrawer implements OnChanges {
       { label: 'SLA Due', value: ticket.slaDue || '—' },
       { label: 'SLA', value: ticket.slaStatus },
       { label: 'Email', value: ticket.customerEmail || '—' },
-      { label: 'Assigned To', value: ticket.assignedTo },
+      // [Assigned To] holds the mailbox; the person's name reads better here.
+      { label: 'Assigned To', value: this.userDirectory.displayName(ticket.assignedTo) },
       { label: 'Project', value: ticket.project || '—' },
       { label: 'Unit', value: ticket.unit || '—' },
     ];

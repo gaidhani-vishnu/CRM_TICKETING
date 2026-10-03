@@ -27,6 +27,25 @@
   }
 }
 
+/* Fixed To row: greyed like a disabled field, no focus ring, no text caret. */
+.recipient-row.is-readonly {
+  background: #f1f5f9;
+  cursor: default;
+
+  &:focus-within {
+    border-color: #cbd5e1;
+    box-shadow: none;
+  }
+
+  .recipient-pill {
+    padding-right: 8px;
+  }
+
+  .recipient-text {
+    cursor: default;
+  }
+}
+
 .recipient-pill {
   display: inline-flex;
   align-items: center;

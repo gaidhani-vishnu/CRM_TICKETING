@@ -226,6 +226,7 @@
           <app-email-recipient-input
             inputId="alert-compose-to"
             [(recipients)]="compose.to"
+            [readonly]="true"
             placeholder="Customer email address"
           ></app-email-recipient-input>
         </div>
@@ -400,6 +401,11 @@
           </span>
           <span class="alert-preview-size">{{ readableSize(preview.file.sizeBytes) }}</span>
 
+          <!-- Which of the reply's images this is. Only when there is more than one. -->
+          <span class="alert-preview-count" *ngIf="previewImages.length > 1">
+            {{ previewIndex + 1 }} / {{ previewImages.length }}
+          </span>
+
           <!-- The same save the card behind this one offers, repeated here
                because this is where a reviewer decides they want the file: they
                have just looked at it, and closing the preview to find the arrow
@@ -454,7 +460,37 @@
         <div class="alert-preview-error" *ngIf="downloadError">{{ downloadError }}</div>
 
         <div class="alert-preview-stage">
+          <!-- Previous / Next through the same reply's images. Shown only when
+               the reply carries more than one; ← and → do the same. -->
+          <button
+            *ngIf="previewImages.length > 1"
+            type="button"
+            class="alert-preview-nav is-prev"
+            (click)="stepPreview(-1)"
+            [disabled]="!hasPreviousImage"
+            title="Previous image (←)"
+            aria-label="Previous image"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+
           <img [src]="previewUrl()" [alt]="preview.file.fileName" />
+
+          <button
+            *ngIf="previewImages.length > 1"
+            type="button"
+            class="alert-preview-nav is-next"
+            (click)="stepPreview(1)"
+            [disabled]="!hasNextImage"
+            title="Next image (→)"
+            aria-label="Next image"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -531,7 +567,7 @@
         *ngIf="file.isImage; else fileLink"
         type="button"
         class="alert-history-file-main"
-        (click)="openPreview(owner, file)"
+        (click)="openPreview(owner, file, files)"
         [title]="file.fileName + ' — click to preview'"
       >
         <ng-container

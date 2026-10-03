@@ -1000,9 +1000,12 @@ export class EmailReceiptsTable implements OnInit, OnChanges, AfterViewInit, OnD
       .map((status) => ({ status, count: counts[status] }));
   }
 
-  /** The configured CRM head, the one owner that is not read off the row. */
+  /**
+   * The configured CRM head, the one owner that is not read off the row —
+   * by mailbox, the way [Assigned To] stores it.
+   */
   get crmHeadName(): string {
-    return this.config.fallbackUser.name;
+    return this.config.mailboxOf(this.config.fallbackUser.emailId || this.config.fallbackUser.name);
   }
 
   /**
@@ -1019,7 +1022,7 @@ export class EmailReceiptsTable implements OnInit, OnChanges, AfterViewInit, OnD
    * config.json spells it.
    */
   private ownerOf(row: EmailReceiptRow): string {
-    return ownerOf(row.assignedTo, this.crmHeadName);
+    return ownerOf(row.assignedTo, this.crmHeadName, (value) => this.config.mailboxOf(value));
   }
 
   /**
@@ -1108,8 +1111,11 @@ export class EmailReceiptsTable implements OnInit, OnChanges, AfterViewInit, OnD
    * Built by the same function the User Dashboard uses, so the two menus agree.
    */
   private toOwnerOptions(): UserFilterOption[] {
-    return buildOwnerOptions(this.rows, this.crmHeadName, (name) =>
-      this.userDirectory.displayName(name)
+    return buildOwnerOptions(
+      this.rows,
+      this.crmHeadName,
+      (name) => this.userDirectory.displayName(name),
+      (value) => this.config.mailboxOf(value)
     );
   }
 

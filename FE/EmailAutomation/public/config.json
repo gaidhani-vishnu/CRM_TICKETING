@@ -5,6 +5,7 @@
   "version": "1.0.0",
 
   "fallbackUser": { "name": "NAMRATA", "emailId": "CRMHEAD@PRIDEWORLDCITY.COM" },
+  "FromEmail": { "name": "WORKFLOW", "emailId": "workflow@prideworldcity.com" },
 
   "updatedBy": "CRM UI",
 

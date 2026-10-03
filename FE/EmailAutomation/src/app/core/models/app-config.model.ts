@@ -88,6 +88,12 @@ export interface AppConfig {
    */
   fallbackUser?: MasterUser;
   /**
+   * The mailbox every reply's From box is filled with, on every thread and
+   * every step template. Optional: without it (or with a blank emailId) From
+   * falls back to the thread's owner, then the CRM head.
+   */
+  FromEmail?: MasterUser;
+  /**
    * Name stamped on the audit log's UpdatedBy for every reviewer correction.
    *
    * Static until the app has a sign-in: there is no user identity to send, and a

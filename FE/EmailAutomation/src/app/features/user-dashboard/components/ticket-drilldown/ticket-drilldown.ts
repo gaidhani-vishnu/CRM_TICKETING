@@ -8,6 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 
+import { UserDirectoryService } from '../../../../core/services/user-directory.service';
 import {
   ACTION_COLUMNS,
   ActionColumn,
@@ -65,6 +66,8 @@ export class TicketDrilldown implements OnChanges {
   steps: string[] = [];
 
   readonly columns: ActionColumn[] = ACTION_COLUMNS;
+
+  constructor(private readonly userDirectory: UserDirectoryService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     // A new request re-seeds the filters from what was actually clicked.
@@ -128,6 +131,11 @@ export class TicketDrilldown implements OnChanges {
 
   trackByColumnOption(index: number, column: ActionColumn): string {
     return column.key;
+  }
+
+  /** Who owns the ticket, by name — [Assigned To] holds their mailbox. */
+  assigneeName(ticket: DashboardTicket): string {
+    return this.userDirectory.displayName(ticket.assignedTo);
   }
 
   /** The column heading a ticket's [Action Status] counts under, e.g. 'User Edit'. */
@@ -200,6 +208,7 @@ export class TicketDrilldown implements OnChanges {
         ticket.customerEmail,
         ticket.step,
         ticket.assignedTo,
+        this.assigneeName(ticket),
         ticket.unit,
         ticket.project,
       ]

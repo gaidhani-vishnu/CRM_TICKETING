@@ -74,7 +74,7 @@ describe('AlertPopup', () => {
         EmailResponseTemplateService,
         // The real ConfigService is filled by an APP_INITIALIZER that does not
         // run in tests, so the two values the service reads are stubbed.
-        { provide: ConfigService, useValue: { apiBaseUrl: API, updatedBy: 'CRM UI' } },
+        { provide: ConfigService, useValue: { apiBaseUrl: API, updatedBy: 'CRM UI', fromEmail: 'workflow@example.com' } },
       ],
     });
 

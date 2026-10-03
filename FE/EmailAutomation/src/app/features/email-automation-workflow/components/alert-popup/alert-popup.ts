@@ -210,7 +210,7 @@ export class AlertPopup implements OnChanges {
     this.messages = [];
     this.messagesError = '';
     this.history = [];
-    this.preview = null;
+    this.closePreview();
     this.downloadError = '';
 
     if (!this.row) {
@@ -387,8 +387,9 @@ export class AlertPopup implements OnChanges {
       attachments: [],
 
       // No From box, no Subject box, and no ticket to file it against: this is
-      // the reviewer's own reply, so the server derives what it needs.
-      from: '',
+      // the reviewer's own reply, so the server derives what it needs. From is
+      // still sent — config.json's FromEmail — so Sent_From is never left NULL.
+      from: this.templates.sender(this.row),
       subject: '',
       ticketId: '',
     };
@@ -692,7 +693,7 @@ export class AlertPopup implements OnChanges {
   }
 
   onClose(): void {
-    this.preview = null;
+    this.closePreview();
     this.closed.emit();
   }
 
@@ -714,13 +715,75 @@ export class AlertPopup implements OnChanges {
    */
   preview: { reply: FileOwner; file: ThreadReplyAttachment } | null = null;
 
+  /**
+   * Every image on the reply the open one came from, in the order the card
+   * lists them. Previous / Next step through these, so a reply with four
+   * screenshots can be read without closing the preview between each one.
+   */
+  previewImages: ThreadReplyAttachment[] = [];
+
   /** Opened by clicking an image chip. Closed by its own x, not the popup's. */
-  openPreview(reply: FileOwner, file: ThreadReplyAttachment): void {
+  openPreview(
+    reply: FileOwner,
+    file: ThreadReplyAttachment,
+    files: ThreadReplyAttachment[] = []
+  ): void {
+    this.previewImages = (files || []).filter((f) => f.isImage);
+
+    if (this.previewImages.indexOf(file) === -1) {
+      this.previewImages = [file];
+    }
+
     this.preview = { reply, file };
   }
 
   closePreview(): void {
     this.preview = null;
+    this.previewImages = [];
+  }
+
+  /** Where the open image sits among its reply's images, 0-based. */
+  get previewIndex(): number {
+    return this.preview ? this.previewImages.indexOf(this.preview.file) : -1;
+  }
+
+  get hasPreviousImage(): boolean {
+    return this.previewIndex > 0;
+  }
+
+  get hasNextImage(): boolean {
+    const index = this.previewIndex;
+
+    return index !== -1 && index < this.previewImages.length - 1;
+  }
+
+  /** Steps to the image before (-1) or after (+1); stops at either end. */
+  stepPreview(direction: -1 | 1): void {
+    if (!this.preview) {
+      return;
+    }
+
+    const next = this.previewImages[this.previewIndex + direction];
+
+    if (next) {
+      this.preview = { reply: this.preview.reply, file: next };
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** The arrow keys page through the images while the preview is open. */
+  @HostListener('document:keydown.arrowleft')
+  onArrowLeft(): void {
+    if (this.preview) {
+      this.stepPreview(-1);
+    }
+  }
+
+  @HostListener('document:keydown.arrowright')
+  onArrowRight(): void {
+    if (this.preview) {
+      this.stepPreview(1);
+    }
   }
 
   /**

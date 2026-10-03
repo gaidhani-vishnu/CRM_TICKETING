@@ -226,8 +226,9 @@ export class EmailResponseTemplateService {
   }
 
   /**
-   * The mailbox this reply goes out from: the thread's own owner where it has
-   * one, and the CRM head where it does not.
+   * The mailbox this reply goes out from: config.json's FromEmail when it is
+   * set, for every thread and every step. Otherwise the thread's own owner
+   * where it has one, and the CRM head where it does not.
    *
    * main_email_receipts.[Assigned To] holds the executive's *name* as
    * config.json spells it ("KAILASH D"), not an address, so it is resolved
@@ -240,6 +241,12 @@ export class EmailResponseTemplateService {
    * fills its own From from here rather than keeping a second copy of the rule.
    */
   sender(row: EmailReceiptRow): string {
+    const fromEmail = this.config.fromEmail;
+
+    if (fromEmail) {
+      return fromEmail;
+    }
+
     const assignedTo = (row.assignedTo || '').trim();
     const mailbox = assignedTo ? this.config.getEmailForUser(assignedTo) : '';
 

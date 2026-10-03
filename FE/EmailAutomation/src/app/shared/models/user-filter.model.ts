@@ -50,9 +50,17 @@ export function userInitials(name: string): string {
  *
  * Shared by both screens so their pickers can never file the same thread
  * under two different people.
+ *
+ * `keyOf` folds the spellings of one person into one — ConfigService.mailboxOf
+ * turns an older row's 'KAILASH D' into the 'CRM2@…' the column now stores.
  */
-export function ownerOf(assignedTo: string | undefined, crmHead: string): string {
-  const name = (assignedTo || '').trim();
+export function ownerOf(
+  assignedTo: string | undefined,
+  crmHead: string,
+  keyOf?: (value: string) => string
+): string {
+  const raw = (assignedTo || '').trim();
+  const name = keyOf && raw !== '' ? keyOf(raw) : raw;
 
   return name === '' || name.toLowerCase() === crmHead.toLowerCase() ? crmHead : name;
 }
@@ -71,12 +79,13 @@ export function ownerOf(assignedTo: string | undefined, crmHead: string): string
 export function buildOwnerOptions(
   rows: { assignedTo?: string }[],
   crmHead: string,
-  labelOf?: (name: string) => string
+  labelOf?: (name: string) => string,
+  keyOf?: (value: string) => string
 ): UserFilterOption[] {
   const counts: { [name: string]: number } = {};
 
   for (const row of rows) {
-    const name = ownerOf(row.assignedTo, crmHead);
+    const name = ownerOf(row.assignedTo, crmHead, keyOf);
 
     counts[name] = (counts[name] || 0) + 1;
   }

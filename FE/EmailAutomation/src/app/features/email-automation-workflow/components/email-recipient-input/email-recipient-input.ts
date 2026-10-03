@@ -35,6 +35,13 @@ export class EmailRecipientInput {
   /** Ties the row's label to the box for screen readers and label clicks. */
   @Input() inputId = '';
 
+  /**
+   * Shows the addresses but lets nobody change them: no typing, no pasting,
+   * no × on the pills. The To row is set this way because the client wants
+   * it fixed to the thread's Customer Sender, not an address the reviewer types.
+   */
+  @Input() readonly = false;
+
   @ViewChild('textBox') private textBox?: ElementRef<HTMLInputElement>;
 
   /** What is being typed but not yet committed to a pill. */
@@ -48,6 +55,10 @@ export class EmailRecipientInput {
    * stop the browser moving on first.
    */
   onKeyDown(event: KeyboardEvent): void {
+    if (this.readonly) {
+      return;
+    }
+
     if (event.key === 'Enter' || event.key === ',' || event.key === ';' || event.key === 'Tab') {
       // A bare Tab in an empty box is still just Tab — let it move focus on.
       if (event.key === 'Tab' && !this.text.trim()) {
@@ -74,13 +85,18 @@ export class EmailRecipientInput {
    * no recipient at all — the box looked full and the list was empty.
    */
   onBlur(): void {
-    if (this.text.trim()) {
+    if (!this.readonly && this.text.trim()) {
       this.commit(this.text);
     }
   }
 
   /** A pasted list becomes pills in one go rather than one long pill. */
   onPaste(event: ClipboardEvent): void {
+    if (this.readonly) {
+      event.preventDefault();
+      return;
+    }
+
     const pasted = event.clipboardData?.getData('text') ?? '';
 
     if (!pasted) {
@@ -93,6 +109,10 @@ export class EmailRecipientInput {
 
   /** Clicking the empty space of the row puts the caret in the box. */
   onRowClick(event: MouseEvent): void {
+    if (this.readonly) {
+      return;
+    }
+
     // Not when the click was the × of a pill — that button has already acted.
     if ((event.target as HTMLElement).closest('.recipient-pill-remove')) {
       return;
@@ -102,6 +122,10 @@ export class EmailRecipientInput {
   }
 
   removeAt(index: number): void {
+    if (this.readonly) {
+      return;
+    }
+
     const next = this.recipients.slice();
     next.splice(index, 1);
 

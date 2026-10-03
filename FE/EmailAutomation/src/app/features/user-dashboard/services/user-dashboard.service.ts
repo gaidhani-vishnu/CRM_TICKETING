@@ -209,9 +209,17 @@ export class UserDashboardService {
     private readonly visibility: TicketVisibilityService
   ) {}
 
-  /** The configured CRM head — who a thread with a blank [Assigned To] belongs to. */
+  /**
+   * The configured CRM head — who a thread with a blank [Assigned To] belongs
+   * to — by mailbox, the way the column stores it.
+   */
   get crmHeadName(): string {
-    return this.config.fallbackUser.name;
+    return this.config.mailboxOf(this.config.fallbackUser.emailId || this.config.fallbackUser.name);
+  }
+
+  /** The mailbox an [Assigned To] value files under — an older row's name included. */
+  ownerKey(value: string): string {
+    return this.config.mailboxOf(value);
   }
 
   /** The tickets already loaded for a date, or null if it has not been read. */
@@ -482,7 +490,7 @@ export class UserDashboardService {
    * an owner here must land on the same threads it does there.
    */
   private resolveAssignee(row: EmailReceiptRow | undefined): string {
-    return ownerOf(row && row.assignedTo, this.crmHeadName);
+    return ownerOf(row && row.assignedTo, this.crmHeadName, (value) => this.ownerKey(value));
   }
 
   private clean(value: string | undefined, fallback: string): string {

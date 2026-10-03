@@ -3,7 +3,7 @@
   inside it and the typing box as the last item on the line — so a long list
   wraps and the caret stays where the next address goes.
 -->
-<div class="recipient-row" (click)="onRowClick($event)">
+<div class="recipient-row" [class.is-readonly]="readonly" (click)="onRowClick($event)">
 
   <span
     class="recipient-pill"
@@ -15,6 +15,7 @@
     <span class="recipient-pill-text">{{ address }}</span>
 
     <button
+      *ngIf="!readonly"
       type="button"
       class="recipient-pill-remove"
       (click)="removeAt(i)"
@@ -23,11 +24,16 @@
     >×</button>
   </span>
 
+  <!-- Read-only: the box stays only while there are no pills, so an empty
+       row still shows its placeholder; it cannot be typed into. -->
   <input
+    *ngIf="!readonly || recipients.length === 0"
     #textBox
     type="text"
     class="recipient-text"
     [id]="inputId"
+    [readOnly]="readonly"
+    [attr.aria-readonly]="readonly"
     [(ngModel)]="text"
     [placeholder]="recipients.length ? '' : placeholder"
     (keydown)="onKeyDown($event)"

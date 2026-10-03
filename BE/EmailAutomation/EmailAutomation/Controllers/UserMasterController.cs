@@ -19,6 +19,7 @@ namespace EmailAutomation.Controllers
     /// </summary>
     [EnableCors(origins: "*", headers: "Content-Type, Authorization", methods: "GET, POST, PUT, DELETE")]
     [RoutePrefix("api/usermaster")]
+    //[RoutePrefix("usermaster")]
     public class UserMasterController : ApiController
     {
         private static string PrideConnectionString

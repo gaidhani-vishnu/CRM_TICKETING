@@ -80,6 +80,14 @@ export class ConfigService {
   }
 
   /**
+   * config.json's FromEmail.emailId: the default From address for every reply.
+   * '' when the section is absent, so callers fall back to the thread's owner.
+   */
+  get fromEmail(): string {
+    return (this.get().FromEmail?.emailId ?? '').trim();
+  }
+
+  /**
    * Who reviewer corrections are logged against. Hard-coded default so an older
    * config.json still stamps something meaningful rather than a blank column.
    */
@@ -94,9 +102,18 @@ export class ConfigService {
    * own `fallbackUser` section rather than in `users[]` — without this, a thread
    * Unit Match routed to the catch-all (CRM_Head) resolves to no mailbox at all,
    * even though the config gives it one.
+   *
+   * A value that already is a mailbox comes back as it stands: [Assigned To]
+   * stores the emailId, so callers may hand either spelling in.
    */
   getEmailForUser(name: string): string {
-    const target = (name ?? '').trim().toLowerCase();
+    const raw = (name ?? '').trim();
+
+    if (raw.indexOf('@') !== -1) {
+      return raw;
+    }
+
+    const target = raw.toLowerCase();
     const match = this.users.find((u) => u.name.toLowerCase() === target);
 
     if (match) {
@@ -106,6 +123,18 @@ export class ConfigService {
     const fallback = this.fallbackUser;
 
     return target && fallback.name.trim().toLowerCase() === target ? fallback.emailId : '';
+  }
+
+  /**
+   * The mailbox an [Assigned To] value stands for — what the column stores.
+   * Rows written before it stored the emailId hold the config.json name; this
+   * folds them onto the same mailbox so one person is never two owners. A
+   * value config.json does not know comes back as it stands.
+   */
+  mailboxOf(value: string | null | undefined): string {
+    const raw = (value ?? '').trim();
+
+    return this.getEmailForUser(raw) || raw;
   }
 
   /**

@@ -52,9 +52,15 @@ export class TicketVisibilityService {
     }
 
     const owner = (assignedTo || '').trim().toLowerCase();
+    const head = this.config.fallbackUser;
 
-    // Unassigned: blank, or filed under the CRM head the same way ownerOf() does.
-    if (owner === '' || owner === this.config.fallbackUser.name.trim().toLowerCase()) {
+    // Unassigned: blank, or filed under the CRM head the same way ownerOf()
+    // does — by its emailId, which [Assigned To] stores, or its older name.
+    if (
+      owner === '' ||
+      owner === (head.emailId || '').trim().toLowerCase() ||
+      owner === (head.name || '').trim().toLowerCase()
+    ) {
       return false;
     }
 

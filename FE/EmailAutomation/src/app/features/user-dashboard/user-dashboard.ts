@@ -366,8 +366,11 @@ export class UserDashboard implements OnInit {
       [] as { assignedTo?: string }[]
     );
 
-    return buildOwnerOptions(rows, this.dashboard.crmHeadName, (name) =>
-      this.userDirectory.displayName(name)
+    return buildOwnerOptions(
+      rows,
+      this.dashboard.crmHeadName,
+      (name) => this.userDirectory.displayName(name),
+      (value) => this.dashboard.ownerKey(value)
     );
   }
 

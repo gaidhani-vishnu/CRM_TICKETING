@@ -1031,13 +1031,14 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
     this.unitAssignment = decision;
     this.describeAssignment(decision, unitMatched && !booking);
 
-    const name = (decision.user.name || '').trim();
+    // [Assigned To] stores the owner's emailId, never the config.json name.
+    const mailbox = this.config.getEmailForUser(decision.user.emailId || decision.user.name);
 
-    if (!name || !this.date) {
+    if (!mailbox || !this.date) {
       return;
     }
 
-    this.api.assignThread(this.date, row.threadId, name).subscribe({
+    this.api.assignThread(this.date, row.threadId, mailbox).subscribe({
       next: (result) => {
         row.assignedTo = result.assignedTo;
         this.assignmentChanged.emit();
@@ -3223,14 +3224,24 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
       return;
     }
 
-    this.api.assignThread(this.date, row.threadId, name).subscribe({
+    // [Assigned To] stores the owner's emailId, never the name picked.
+    const mailbox = this.config.getEmailForUser(name);
+
+    if (!mailbox) {
+      this.editError = `${name} has no emailId in config.json, so the thread cannot be assigned to them.`;
+      this.isSavingEdit = false;
+      this.repaint();
+      return;
+    }
+
+    this.api.assignThread(this.date, row.threadId, mailbox).subscribe({
       next: (result) => {
         row.assignedTo = result.assignedTo;
 
         if (this.unitAssignment) {
           this.unitAssignment = {
             ...this.unitAssignment,
-            user: { name, emailId: this.config.getEmailForUser(name) },
+            user: { name, emailId: mailbox },
             needsIntervention: false,
           };
         }
