@@ -8,9 +8,9 @@ import { SlotAssignmentService } from './slot-assignment.service';
 
 /**
  * A cut-down config.json carrying the parts the rule reads: slotted users, the
- * booking statuses staged under each slot, and a few project mappings — one of
- * which (RIO TOWER → PIYUSH) lists a user who holds no slot at all, the way the
- * live file does.
+ * booking statuses staged under each slot, and project mappings with one owner
+ * per sub-project — one of which (RIO TOWER / J → PIYUSH) names a user who
+ * holds no slot at all, the way the live file does.
  */
 const CONFIG: AppConfig = {
   apiBaseUrl: 'http://test.local/api',
@@ -28,13 +28,11 @@ const CONFIG: AppConfig = {
     { name: 'PIYUSH', emailId: '' },
   ],
   projectMappings: [
-    {
-      company: 'PRIDE',
-      projectName: 'WELLINGTON - E-H-J-K',
-      users: ['NIKITA K.', 'SONAL', 'AMIT', 'RITA', 'SURAJ'],
-    },
-    { company: 'PRIDE', projectName: 'SOHO', users: ['SONAL', 'SURAJ', 'NAMRATA'] },
-    { company: 'CHARHOLI', projectName: 'RIO TOWER', users: ['PIYUSH'] },
+    { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'K', users: ['RITA'] },
+    { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'E', users: ['SONAL'] },
+    { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'H', users: ['SURAJ'] },
+    { company: 'PRIDE', projectName: 'SOHO', users: ['NAMRATA'] },
+    { company: 'CHARHOLI', projectName: 'RIO TOWER', subProject: 'J', users: ['PIYUSH'] },
   ],
   bookingStatusSlots: {
     'Pre-Agreement': ['TRANSACTION FORM', 'ALLOTMENT LETTER / LOI'],
@@ -87,17 +85,18 @@ describe('SlotAssignmentService', () => {
   });
 
   describe('Pre-Agreement', () => {
-    it('takes the first mapped user who works that stage', () => {
+    it("takes the sub-project's mapped owner when they work that stage", () => {
       const decision = service.resolve({
         unitMatched: true,
         bookingStatusName: 'TRANSACTION FORM',
         project: 'WELLINGTON',
-        subProject: 'K',
+        subProject: 'E',
       });
 
-      expect(decision.user).toEqual({ name: 'NIKITA K.', emailId: 'CRM@TEST.LOCAL' });
+      expect(decision.user).toEqual({ name: 'SONAL', emailId: 'CRM3@TEST.LOCAL' });
       expect(decision.slot).toBe('Pre-Agreement');
       expect(decision.reason).toBe('slot-mapping');
+      expect(decision.pool).toEqual(['SONAL']);
     });
 
     it('gives the same answer every time, whatever thread it is run for', () => {
@@ -106,22 +105,24 @@ describe('SlotAssignmentService', () => {
           unitMatched: true,
           bookingStatusName: 'ALLOTMENT LETTER',
           project: 'WELLINGTON',
-          subProject: 'K',
+          subProject: 'E',
         }).user.name;
 
-      expect(run()).toBe('NIKITA K.');
-      expect(run()).toBe('NIKITA K.');
+      expect(run()).toBe('SONAL');
+      expect(run()).toBe('SONAL');
     });
 
-    it('skips a mapped user whose slot is a later stage', () => {
-      // SOHO lists SONAL (Pre), SURAJ (Post-Agreement) and NAMRATA (Post-Possession).
-      expect(
-        service.resolve({
-          unitMatched: true,
-          bookingStatusName: 'TRANSACTION FORM',
-          project: 'SOHO',
-        }).user.name
-      ).toBe('SONAL');
+    it("gives it to the CRM head when the sub-project's owner works a later stage", () => {
+      const decision = service.resolve({
+        unitMatched: true,
+        bookingStatusName: 'TRANSACTION FORM',
+        project: 'WELLINGTON',
+        subProject: 'K',
+      });
+
+      expect(decision.user.name).toBe('CRM_Head');
+      expect(decision.reason).toBe('no-slot-user');
+      expect(decision.pool).toEqual(['RITA']);
     });
 
     it('gives it to the CRM head when the project matches no mapping', () => {
@@ -136,11 +137,12 @@ describe('SlotAssignmentService', () => {
       expect(decision.reason).toBe('no-slot-user');
     });
 
-    it('gives it to the CRM head when no mapped user works the early stage', () => {
+    it('gives it to the CRM head when the mapped user holds no slot', () => {
       const decision = service.resolve({
         unitMatched: true,
         bookingStatusName: 'TRANSACTION FORM',
         project: 'RIO TOWER',
+        subProject: 'J',
       });
 
       expect(decision.user.name).toBe('CRM_Head');
@@ -158,7 +160,7 @@ describe('SlotAssignmentService', () => {
         unitMatched: true,
         bookingStatusName: 'TRANSACTION FORM',
         project: 'WELLINGTON',
-        subProject: 'K',
+        subProject: 'E',
       });
 
       expect(decision.user.name).toBe('CRM_Head');
@@ -168,40 +170,32 @@ describe('SlotAssignmentService', () => {
   });
 
   describe('Post-Agreement', () => {
-    it('takes the first mapped user who works that stage', () => {
-      const decision = service.resolve({
-        unitMatched: true,
-        bookingStatusName: 'DOCUMENT HANDOVER',
-        project: 'WELLINGTON',
-        subProject: 'K',
-      });
-
-      expect(decision.user).toEqual({ name: 'RITA', emailId: 'RITA@TEST.LOCAL' });
-      expect(decision.slot).toBe('Post-Agreement');
-      expect(decision.reason).toBe('slot-mapping');
-    });
-
-    it('skips a mapped user whose slot is a different stage', () => {
-      // SOHO lists SONAL (Pre), SURAJ (Post-Agreement) and NAMRATA (Post-Possession).
-      expect(
+    it('gives each sub-project of one project to its own owner', () => {
+      const ownerOf = (subProject: string) =>
         service.resolve({
           unitMatched: true,
-          bookingStatusName: 'POSSESSION LETTER ISSUED',
-          project: 'SOHO',
-        }).user.name
-      ).toBe('SURAJ');
+          bookingStatusName: 'DOCUMENT HANDOVER',
+          project: 'WELLINGTON',
+          subProject,
+        });
+
+      expect(ownerOf('K').user).toEqual({ name: 'RITA', emailId: 'RITA@TEST.LOCAL' });
+      expect(ownerOf('K').reason).toBe('slot-mapping');
+      expect(ownerOf('H').user).toEqual({ name: 'SURAJ', emailId: 'CRM7@TEST.LOCAL' });
     });
 
-    it('gives it to the CRM head when no mapped user works that stage', () => {
-      const decision = service.resolve({
-        unitMatched: true,
-        bookingStatusName: 'DOCUMENT HANDOVER',
-        project: 'RIO TOWER',
-      });
+    it('gives it to the CRM head when the sub-project is not listed', () => {
+      for (const subProject of ['J', '', undefined]) {
+        const decision = service.resolve({
+          unitMatched: true,
+          bookingStatusName: 'DOCUMENT HANDOVER',
+          project: 'WELLINGTON',
+          subProject,
+        });
 
-      expect(decision.user.name).toBe('CRM_Head');
-      expect(decision.reason).toBe('no-slot-user');
-      expect(decision.pool).toEqual(['PIYUSH']);
+        expect(decision.user.name).toBe('CRM_Head');
+        expect(decision.reason).toBe('no-slot-user');
+      }
     });
 
     it('gives it to the CRM head when the project matches no mapping', () => {
@@ -214,6 +208,22 @@ describe('SlotAssignmentService', () => {
 
       expect(decision.user.name).toBe('CRM_Head');
       expect(decision.reason).toBe('no-slot-user');
+    });
+
+    it('still reads the wings off projectName for an entry without subProject', async () => {
+      await load({
+        ...CONFIG,
+        projectMappings: [{ company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', users: ['RITA'] }],
+      });
+
+      expect(
+        service.resolve({
+          unitMatched: true,
+          bookingStatusName: 'DOCUMENT HANDOVER',
+          project: 'WELLINGTON',
+          subProject: 'J',
+        }).user.name
+      ).toBe('RITA');
     });
   });
 
@@ -229,6 +239,7 @@ describe('SlotAssignmentService', () => {
         }).user.name
       ).toBe('CRM_Head');
 
+      // SOHO lists no sub-project, so it covers the whole project.
       expect(
         service.resolve({
           unitMatched: true,
@@ -237,27 +248,52 @@ describe('SlotAssignmentService', () => {
         }).user.name
       ).toBe('NAMRATA');
     });
+  });
 
-    it('supports more than one user in the slot, mapping order deciding', async () => {
+  describe('more than one owner for a sub-project', () => {
+    it('picks nobody: the CRM head holds it and a reviewer decides', async () => {
       await load({
         ...CONFIG,
         users: [
           ...(CONFIG.users ?? []),
-          { name: 'MEERA', emailId: 'MEERA@TEST.LOCAL', Slot: 'Post-Possession' },
+          { name: 'MEERA', emailId: 'MEERA@TEST.LOCAL', Slot: 'Post-Agreement' },
         ],
         projectMappings: [
-          { company: 'PRIDE', projectName: 'SOHO', users: ['MEERA', 'NAMRATA'] },
+          { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'K', users: ['RITA'] },
+          { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'K', users: ['MEERA'] },
         ],
       });
 
       const decision = service.resolve({
         unitMatched: true,
-        bookingStatusName: 'FILE SENT FOR BINDING',
-        project: 'SOHO',
+        bookingStatusName: 'DOCUMENT HANDOVER',
+        project: 'WELLINGTON',
+        subProject: 'K',
       });
 
-      expect(decision.user.name).toBe('MEERA');
-      expect(decision.slot).toBe('Post-Possession');
+      expect(decision.user.name).toBe('CRM_Head');
+      expect(decision.reason).toBe('multiple-owners');
+      expect(decision.needsIntervention).toBe(true);
+      expect(decision.pool).toEqual(['RITA', 'MEERA']);
+    });
+
+    it('does not count the same user listed twice as two owners', async () => {
+      await load({
+        ...CONFIG,
+        projectMappings: [
+          { company: 'PRIDE', projectName: 'WELLINGTON - E-H-J-K', subProject: 'K', users: ['RITA'] },
+          { company: 'PRIDE', projectName: 'WELLINGTON', subProject: 'K', users: ['rita '] },
+        ],
+      });
+
+      expect(
+        service.resolve({
+          unitMatched: true,
+          bookingStatusName: 'DOCUMENT HANDOVER',
+          project: 'WELLINGTON',
+          subProject: 'K',
+        }).user.name
+      ).toBe('RITA');
     });
   });
 

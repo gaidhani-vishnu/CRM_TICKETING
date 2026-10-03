@@ -45,11 +45,24 @@ export interface MasterUser {
   slot?: string;
 }
 
-/** One project and the users responsible for it, grouped under its owning company. */
+/**
+ * One project wing and the user responsible for it, grouped under its owning
+ * company. config.json carries one entry per project + sub-project, e.g.
+ * WELLINGTON - E-H-J-K / H → SURAJ.
+ */
 export interface ProjectMapping {
   company: string;
   projectName: string;
-  /** Names referencing MasterUser.name. May be empty when nobody is assigned yet. */
+  /**
+   * The single wing this entry covers, e.g. 'H' or 'A1'. Optional so an older
+   * file without it still boots: the wings are then read off projectName, and a
+   * projectName with no wings covers the whole project.
+   */
+  subProject?: string;
+  /**
+   * Names referencing MasterUser.name — normally exactly one. Nobody is picked
+   * from a longer list: two or more owners for the same wing is sent to a reviewer.
+   */
   users: string[];
 }
 
@@ -94,11 +107,11 @@ export interface AppConfig {
    */
   FromEmail?: MasterUser;
   /**
-   * Name stamped on the audit log's UpdatedBy for every reviewer correction.
+   * Label stamped as UpdatedBy where no signed-in user is available.
    *
-   * Static until the app has a sign-in: there is no user identity to send, and a
-   * blank column would be worse than a known label. Kept here so it can be
-   * changed on the deployed server without a rebuild.
+   * The audit log (PRIDE_BANK_DETAILS_AUDIT_LOG) stores the signed-in user's
+   * PRIDE_USER_MASTER.UserID instead, and falls back to this only for a call made
+   * without a live session. Saved replies (PRIDE_EMAIL_REPLY) still use it.
    */
   updatedBy?: string;
 }

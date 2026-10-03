@@ -34,7 +34,10 @@ interface ParsedMapping {
   mapping: ProjectMapping;
   /** e.g. 'WELLINGTON', 'RIO TOWER'. Upper-cased. */
   base: string;
-  /** e.g. ['E','H','J','K'] or ['A1','A2','A3','B2']. Empty = mapping covers the whole project. */
+  /**
+   * The entry's subProject, e.g. ['H']; for an entry without one, the codes in its
+   * name, e.g. ['E','H','J','K']. Empty = mapping covers the whole project.
+   */
   wings: string[];
 }
 
@@ -123,30 +126,39 @@ export class ProjectAssignmentService {
   }
 
   /**
-   * Splits every configured projectName into base + wings.
+   * Splits every configured projectName into base + wings. An entry's own
+   * subProject, when it has one, is its only wing — the codes in projectName
+   * then just name the building group and are not used for matching.
    *
    * Not cached: config.json is re-read on every app start and the mapping list is tiny,
    * so recomputing keeps edits to the file live without any invalidation logic.
    */
   private parsedMappings(): ParsedMapping[] {
     return this.config.projectMappings.map((mapping) => {
-      const tokens = (mapping.projectName || '')
-        .toUpperCase()
-        .split(/[-\s]+/)
-        .filter((t) => t !== '');
+      const parsed = this.parseProjectName(mapping);
+      const subProject = this.normalize(mapping.subProject);
 
-      // Walk backwards taking short alphanumeric codes (A, D, F, A1, B2) as wings.
-      // Stops at the first real word, so 'RIO TOWER' and 'SHRIDHAM L BUILDING'
-      // keep all their tokens in the base and match on project name alone.
-      const wings: string[] = [];
-      let end = tokens.length;
-      while (end > 1 && /^[A-Z]\d?$/.test(tokens[end - 1])) {
-        wings.unshift(tokens[end - 1]);
-        end--;
-      }
-
-      return { mapping, base: tokens.slice(0, end).join(' '), wings };
+      return subProject ? { ...parsed, wings: [subProject] } : parsed;
     });
+  }
+
+  private parseProjectName(mapping: ProjectMapping): ParsedMapping {
+    const tokens = (mapping.projectName || '')
+      .toUpperCase()
+      .split(/[-\s]+/)
+      .filter((t) => t !== '');
+
+    // Walk backwards taking short alphanumeric codes (A, D, F, A1, B2) as wings.
+    // Stops at the first real word, so 'RIO TOWER' and 'SHRIDHAM L BUILDING'
+    // keep all their tokens in the base and match on project name alone.
+    const wings: string[] = [];
+    let end = tokens.length;
+    while (end > 1 && /^[A-Z]\d?$/.test(tokens[end - 1])) {
+      wings.unshift(tokens[end - 1]);
+      end--;
+    }
+
+    return { mapping, base: tokens.slice(0, end).join(' '), wings };
   }
 
   private normalize(value: string | undefined): string {

@@ -7798,6 +7798,10 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
         {
             public string Company { get; set; }
             public string ProjectName { get; set; }
+
+            /// <summary>The one wing this entry covers; blank = read the wings off ProjectName.</summary>
+            public string SubProject { get; set; }
+
             public List<string> Users { get; set; }
         }
 
@@ -7920,19 +7924,24 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                 return AutoCheckHeadOwner(config, "no-slot-user", slot, new List<string>());
             }
 
+            // One owner per sub-project — no first-of-the-list pick. More than
+            // one is a config clash the reviewer settles, so the head holds it.
+            if (mapped.Count > 1)
+            {
+                return AutoCheckHeadOwner(config, "multiple-owners", slot, mapped);
+            }
+
             var inSlot = config.Users
                 .Where(user => AutoCheckSlotOf(user) == slot)
                 .Select(user => AutoCheckNameKey(user.Name))
                 .ToList();
 
-            var eligible = mapped.Where(name => inSlot.Contains(AutoCheckNameKey(name))).ToList();
-
-            if (eligible.Count == 0)
+            if (mapped.Count == 0 || !inSlot.Contains(AutoCheckNameKey(mapped[0])))
             {
                 return AutoCheckHeadOwner(config, "no-slot-user", slot, mapped);
             }
 
-            return new AutoCheckOwnerDecision { UserName = eligible[0], Slot = slot, Reason = "slot-mapping", Pool = mapped };
+            return new AutoCheckOwnerDecision { UserName = mapped[0], Slot = slot, Reason = "slot-mapping", Pool = mapped };
         }
 
         /// <summary>
@@ -8005,6 +8014,14 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                 }
 
                 var baseName = string.Join(" ", tokens.Take(end));
+
+                // An entry's own subProject is its only wing.
+                var ownWing = AutoCheckNameKey(mapping.SubProject);
+
+                if (ownWing.Length > 0)
+                {
+                    wings = new List<string> { ownWing };
+                }
 
                 if (baseName == projectKey &&
                     (wings.Count == 0 || (wingKey.Length > 0 && wings.Contains(wingKey))))
@@ -8106,12 +8123,15 @@ VALUES (@replyId, @fileName, @storedName, @extension, @sizeBytes)";
                     return $"Unit did not match, so {head} owns this thread.";
 
                 case "slot-mapping":
-                    return $"{decision.UserName} is the first {decision.Slot} owner this project maps to.";
+                    return $"{decision.UserName} is the {decision.Slot} owner this project and sub-project map to.";
 
                 case "no-slot-user":
                     return decision.Pool.Count > 0
-                        ? $"None of this project's owners ({string.Join(", ", decision.Pool)}) works the {decision.Slot} stage, so {head} has it."
+                        ? $"This sub-project's owner ({string.Join(", ", decision.Pool)}) does not work the {decision.Slot} stage, so {head} has it."
                         : $"Nobody is set up for the {decision.Slot} stage, so {head} has it.";
+
+                case "multiple-owners":
+                    return $"User intervention required — config.json maps this sub-project to more than one owner ({string.Join(", ", decision.Pool)}), so {head} holds it. Use Edit & Save to pick the owner.";
 
                 default:
                     return $"User intervention required — the booking status is blank or is not one config.json stages, so {head} holds it. Use Edit & Save to pick the owner.";

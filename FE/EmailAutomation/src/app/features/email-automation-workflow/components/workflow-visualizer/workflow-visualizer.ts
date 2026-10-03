@@ -1160,12 +1160,15 @@ export class WorkflowVisualizer implements OnChanges, OnDestroy {
         return `Unit did not match, so ${head} owns this thread.`;
 
       case 'slot-mapping':
-        return `${decision.user.name} is the first ${decision.slot} owner this project maps to.`;
+        return `${decision.user.name} is the ${decision.slot} owner this project and sub-project map to.`;
 
       case 'no-slot-user':
         return decision.pool.length > 0
-          ? `None of this project's owners (${decision.pool.join(', ')}) works the ${decision.slot} stage, so ${head} has it.`
+          ? `This sub-project's owner (${decision.pool.join(', ')}) does not work the ${decision.slot} stage, so ${head} has it.`
           : `Nobody is set up for the ${decision.slot} stage, so ${head} has it.`;
+
+      case 'multiple-owners':
+        return `User intervention required — config.json maps this sub-project to more than one owner (${decision.pool.join(', ')}), so ${head} holds it. Use Edit & Save to pick the owner.`;
 
       default:
         return resumed

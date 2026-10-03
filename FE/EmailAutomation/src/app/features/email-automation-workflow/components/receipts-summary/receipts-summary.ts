@@ -357,8 +357,13 @@ export class ReceiptsSummary implements OnChanges {
       totalTickets++;
 
       const assignment = this.projectAssignment.getAssignment(row.project, row.subProject);
-      const owner = assignment.users[0];
-      const name = owner ? owner.name : 'Unassigned';
+      // One owner per sub-project; more than one is a config clash, not a pick.
+      const name =
+        assignment.users.length === 1
+          ? assignment.users[0].name
+          : assignment.users.length > 1
+            ? 'Multiple owners'
+            : 'Unassigned';
 
       if (assignment.matchLevel === 'fallback') {
         unmappedCount++;

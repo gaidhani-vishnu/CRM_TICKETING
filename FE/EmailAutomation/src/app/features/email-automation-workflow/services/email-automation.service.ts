@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { AgreementStepResponse } from '../models/agreement-step-response.model';
+import { AuthService } from '../../../core/services/auth.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { CustomerEmailVerificationResponse } from '../models/customer-email-verification.model';
 import { EmailDateDropdownItem } from '../models/email-date.model';
@@ -39,8 +40,20 @@ import { UnitMatchResponse } from '../models/unit-match.model';
 export class EmailAutomationService {
   constructor(
     private readonly http: HttpClient,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly auth: AuthService
   ) {}
+
+  /**
+   * What PRIDE_BANK_DETAILS_AUDIT_LOG.UpdatedBy stores for a change made here:
+   * the signed-in user's PRIDE_USER_MASTER.UserID. config.json's updatedBy is
+   * only the stand-in for a call made with no live session.
+   */
+  private get auditUser(): string {
+    const user = this.auth.currentUser;
+
+    return user ? String(user.userId) : this.config.updatedBy;
+  }
 
   /** GET api/emailautomation/dates — dates to bind the date dropdown. */
   getAvailableDates(): Observable<EmailDateDropdownItem[]> {
@@ -93,7 +106,7 @@ export class EmailAutomationService {
   closeTicket(threadId: string, ticketId: string): Observable<TicketCloseResponse> {
     return this.http.post<TicketCloseResponse>(
       `${this.config.apiBaseUrl}/emailautomation/close-ticket`,
-      { threadId, ticketId, updatedBy: this.config.updatedBy }
+      { threadId, ticketId, updatedBy: this.auditUser }
     );
   }
 
@@ -263,7 +276,7 @@ export class EmailAutomationService {
   ): Observable<ReceiptUpdateResponse> {
     return this.http.post<ReceiptUpdateResponse>(
       `${this.config.apiBaseUrl}/emailautomation/update-receipt`,
-      { date, threadId, emailReceiptsId, updatedBy: this.config.updatedBy, ...fields }
+      { date, threadId, emailReceiptsId, updatedBy: this.auditUser, ...fields }
     );
   }
 
@@ -288,7 +301,7 @@ export class EmailAutomationService {
   ): Observable<EntryStatusResponse> {
     return this.http.post<EntryStatusResponse>(
       `${this.config.apiBaseUrl}/emailautomation/set-entry-status`,
-      { threadId, emailReceiptsDetailsId, isNewEntry, entryStatus, updatedBy: this.config.updatedBy }
+      { threadId, emailReceiptsDetailsId, isNewEntry, entryStatus, updatedBy: this.auditUser }
     );
   }
 
@@ -349,7 +362,7 @@ export class EmailAutomationService {
   ): Observable<ReceiptUpdateResponse> {
     return this.http.post<ReceiptUpdateResponse>(
       `${this.config.apiBaseUrl}/emailautomation/apply-booking`,
-      { date, threadId, emailReceiptsId, updatedBy: this.config.updatedBy, ...booking }
+      { date, threadId, emailReceiptsId, updatedBy: this.auditUser, ...booking }
     );
   }
 
@@ -365,7 +378,7 @@ export class EmailAutomationService {
   ): Observable<ReceiptDetailUpdateResponse> {
     return this.http.post<ReceiptDetailUpdateResponse>(
       `${this.config.apiBaseUrl}/emailautomation/update-receipt-detail`,
-      { threadId, emailReceiptsDetailsId, updatedBy: this.config.updatedBy, ...fields }
+      { threadId, emailReceiptsDetailsId, updatedBy: this.auditUser, ...fields }
     );
   }
 
